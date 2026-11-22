@@ -1,0 +1,7 @@
+@media (max-width: 767px) {
+  .layout {
+    --kino-canvas: var(--kino-mobileCanvas);
+    background: var(--kino-mobileCanvas);
+    padding-bottom: var(--kino-mobileBottom);
+  }
+}

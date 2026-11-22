@@ -1,0 +1,56 @@
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 520px);
+  align-items: center;
+  gap: clamp(var(--mantine-spacing-xl), 4.45vw, 64px);
+  flex: 1;
+  width: 100%;
+  max-width: 1440px;
+  margin-inline: auto;
+  padding: 48px clamp(var(--mantine-spacing-md), 4.45vw, 64px) 76px;
+}
+
+.illustration {
+  padding-inline: clamp(0px, 2.8vw, 40px);
+}
+
+.slogan {
+  font-size: clamp(2.2rem, 3.8vw, 3.375rem);
+}
+
+.ticket {
+  max-width: 465px;
+  margin: 32px auto 0;
+  transform: rotate(-11deg) skewX(20deg);
+}
+
+.panel {
+  padding: 36px clamp(var(--mantine-spacing-lg), 2.8vw, 40px);
+  border-radius: 24px;
+  background: var(--kino-form);
+}
+
+.field {
+  height: 48px;
+}
+
+.label {
+  margin-bottom: var(--mantine-spacing-xs);
+  color: var(--kino-muted);
+  font-weight: 400;
+}
+
+@media (max-width: 760px) {
+  .layout {
+    grid-template-columns: minmax(0, 520px);
+    justify-content: center;
+  }
+
+  .illustration {
+    gap: var(--mantine-spacing-xs);
+  }
+
+  .ticket {
+    display: none;
+  }
+}

@@ -1,0 +1,16 @@
+.footer {
+  width: min(1312px, calc(100% - clamp(32px, 8.89vw, 128px)));
+  margin-inline: auto;
+  padding-block: 28px;
+}
+
+.footer a:hover {
+  color: var(--kino-accent);
+}
+
+@media (max-width: 767px) {
+  .footer {
+    column-gap: var(--mantine-spacing-md);
+    row-gap: var(--mantine-spacing-xs);
+  }
+}

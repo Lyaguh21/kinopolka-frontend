@@ -1,0 +1,120 @@
+.header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mantine-spacing-lg);
+  min-height: 96px;
+  width: 100%;
+  max-width: 1440px;
+  margin-inline: auto;
+  padding-inline: clamp(var(--mantine-spacing-md), 3.33vw, 48px);
+}
+
+.navigation {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.9375rem;
+}
+
+.navigation a[aria-current="page"],
+.navigation a:hover {
+  color: var(--kino-accent);
+}
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-xs);
+  width: 230px;
+  height: 44px;
+  padding-inline: var(--mantine-spacing-sm);
+  background: var(--kino-surface);
+  color: var(--kino-muted);
+  border-radius: var(--mantine-radius-lg);
+}
+
+.shortcut {
+  margin-inline-start: auto;
+  background: var(--kino-border);
+  color: var(--kino-text);
+  border: 0;
+  border-radius: var(--mantine-radius-xs);
+}
+
+.bookmark {
+  background: var(--kino-control);
+  color: var(--kino-text);
+}
+
+.bookmark:hover,
+.search:hover {
+  background: var(--kino-border);
+}
+
+.account {
+  display: flex;
+  align-items: center;
+  min-width: 128px;
+  gap: var(--mantine-spacing-xs);
+  justify-content: center;
+}
+
+.accountName {
+  min-width: 0;
+  max-width: 112px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.accountChevron {
+  flex: none;
+  color: var(--kino-muted);
+}
+
+.accountMenu {
+  background: var(--kino-surface);
+  border-color: var(--kino-border);
+}
+
+@media (max-width: 1239px) {
+  .navigation {
+    position: static;
+    transform: none;
+  }
+
+  .search {
+    justify-content: center;
+    width: 44px;
+    padding: 0;
+  }
+
+  .searchText,
+  .shortcut {
+    display: none;
+  }
+
+  .account {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 767px) {
+  .header {
+    gap: var(--mantine-spacing-sm);
+    min-height: var(--kino-mobileHeader);
+    padding: env(safe-area-inset-top, 0px) var(--mantine-spacing-md) 0;
+    background: var(--kino-navSurface);
+  }
+
+  .desktopSearchIcon {
+    display: none;
+  }
+
+  .search {
+    background: transparent;
+    border-radius: var(--mantine-radius-md);
+  }
+}

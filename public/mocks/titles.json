@@ -1,0 +1,113 @@
+[
+  {
+    "id": "dune",
+    "name": "Дюна: Часть вторая",
+    "year": "2024",
+    "genre": "Фантастика",
+    "director": "Дени Вильнёв",
+    "kind": "Фильм",
+    "rating": "8.5",
+    "poster": "/figma/home-dune.png",
+    "minutes": 166,
+    "sourceRatings": { "imdb": "8.5", "kinopoisk": "8.3" },
+    "ratingDistribution": [32, 27, 22, 10, 4, 2, 1, 1, 0.5, 0.5]
+  },
+  {
+    "id": "dune-2021",
+    "name": "Дюна",
+    "year": "2021",
+    "genre": "Фантастика",
+    "director": "Дени Вильнёв",
+    "kind": "Фильм",
+    "rating": "8.0",
+    "poster": "/figma/home-dune.png",
+    "minutes": 155,
+    "sourceRatings": { "imdb": "8.0", "kinopoisk": "7.7" }
+  },
+  {
+    "id": "severance",
+    "name": "Разделение",
+    "year": "2022–…",
+    "genre": "Триллер",
+    "kind": "Сериал",
+    "rating": "8.7",
+    "poster": "/figma/home-severance.png",
+    "sourceRatings": { "imdb": "8.7", "kinopoisk": "8.3" }
+  },
+  {
+    "id": "blade-runner",
+    "name": "Бегущий по лезвию 2049",
+    "year": "2017",
+    "genre": "Фантастика",
+    "director": "Дени Вильнёв",
+    "kind": "Фильм",
+    "rating": "7.8",
+    "poster": "/figma/home-blade-runner.png",
+    "minutes": 164,
+    "sourceRatings": { "imdb": "8.0", "kinopoisk": "7.8" },
+    "ratingDistribution": [21, 22, 23, 16, 8, 4, 2, 2, 1, 1]
+  },
+  {
+    "id": "spirited-away",
+    "name": "Унесённые призраками",
+    "year": "2001",
+    "genre": "Фэнтези",
+    "kind": "Аниме",
+    "rating": "8.8",
+    "poster": "/figma/home-spirited-away.png",
+    "minutes": 125,
+    "sourceRatings": { "imdb": "8.6", "kinopoisk": "8.5" }
+  },
+  {
+    "id": "arrival",
+    "name": "Прибытие",
+    "year": "2016",
+    "genre": "Фантастика",
+    "director": "Дени Вильнёв",
+    "kind": "Фильм",
+    "rating": "8.0",
+    "poster": "/figma/home-arrival.png",
+    "minutes": 116,
+    "sourceRatings": { "imdb": "7.9", "kinopoisk": "7.7" },
+    "ratingDistribution": [23, 24, 22, 16, 7, 3, 2, 1, 1, 1]
+  },
+  {
+    "id": "interstellar",
+    "name": "Интерстеллар",
+    "year": "2014",
+    "genre": "Фантастика",
+    "director": "Кристофер Нолан",
+    "kind": "Фильм",
+    "rating": "8.6",
+    "poster": "/figma/interstellar-poster.png",
+    "minutes": 169,
+    "sourceRatings": { "imdb": "8.7", "kinopoisk": "8.6" },
+    "ratingDistribution": [32, 29, 20, 10, 4, 2, 1, 1, 0.5, 0.5]
+  },
+  {
+    "id": "inception",
+    "name": "Начало",
+    "year": "2010",
+    "genre": "Фантастика",
+    "director": "Кристофер Нолан",
+    "kind": "Фильм",
+    "rating": "8.7",
+    "poster": "/figma/home-inception.png",
+    "minutes": 148,
+    "sourceRatings": { "imdb": "8.8", "kinopoisk": "8.7" },
+    "ratingDistribution": [37, 29, 17, 9, 3, 2, 1, 1, 0.5, 0.5]
+  },
+  {
+    "id": "grand-budapest",
+    "name": "Отель «Гранд Будапешт»",
+    "year": "2014",
+    "genre": "Комедия",
+    "director": "Уэс Андерсон",
+    "kind": "Фильм",
+    "rating": "8.0",
+    "poster": "/figma/home-grand-budapest.png",
+    "minutes": 100,
+    "sourceRatings": { "imdb": "8.1", "kinopoisk": "7.9" },
+    "ratingDistribution": [22, 24, 23, 16, 7, 3, 2, 1, 1, 1]
+  }
+]

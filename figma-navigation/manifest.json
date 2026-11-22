@@ -1,0 +1,9 @@
+{
+  "name": "Кинополка · Обновить навигацию",
+  "id": "1600000000000000618",
+  "api": "1.0.0",
+  "main": "code.js",
+  "editorType": ["figma"],
+  "documentAccess": "dynamic-page",
+  "networkAccess": { "allowedDomains": ["none"] }
+}

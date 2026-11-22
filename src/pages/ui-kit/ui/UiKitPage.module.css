@@ -1,0 +1,36 @@
+.kit {
+  max-width: 1564px;
+  margin-inline: auto;
+  padding: 40px var(--mantine-spacing-md);
+}
+
+.kitIcons {
+  width: min(937px, 100%);
+  height: auto;
+}
+
+.cardSection {
+  padding: var(--mantine-spacing-lg);
+}
+
+.examples {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 244px));
+  gap: var(--mantine-spacing-lg);
+  max-width: 1316px;
+}
+
+.swatch {
+  padding: 10px 20px 10px 12px;
+  background: var(--kino-raised);
+  border-radius: var(--mantine-radius-md);
+}
+
+.swatchColor {
+  border-radius: var(--mantine-radius-sm);
+}
+
+.back {
+  color: var(--kino-text);
+  background: var(--kino-control);
+}

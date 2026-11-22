@@ -1,0 +1,39 @@
+.content {
+  border-radius: 18px;
+  background: var(--kino-form);
+}
+
+.body {
+  padding: 19px 24px 27px;
+}
+
+.title {
+  margin-top: 4px;
+  font-size: 1.6875rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.close {
+  background: var(--kino-modalControl);
+  color: var(--kino-text);
+  border-radius: var(--mantine-radius-md);
+}
+
+.source {
+  min-height: 54px;
+  padding-inline: var(--mantine-spacing-sm) 18px;
+  gap: 14px;
+  border-radius: var(--mantine-radius-md);
+  background: var(--kino-provider);
+}
+
+.close:hover,
+.source:hover {
+  background: var(--kino-border);
+}
+
+.arrow {
+  display: grid;
+  margin-inline-start: auto;
+}

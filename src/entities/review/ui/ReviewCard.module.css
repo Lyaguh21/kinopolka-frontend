@@ -1,0 +1,23 @@
+.review {
+  max-width: 1312px;
+  padding: 24px 28px;
+  border-inline-start: 4px solid var(--kino-positive);
+  border-radius: 14px;
+  background: var(--kino-surface);
+}
+
+.reaction {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--kino-muted);
+  font-size: 0.8125rem;
+}
+
+.reaction[aria-pressed="true"] {
+  color: var(--kino-accent);
+}
+
+.dislike {
+  transform: rotate(180deg);
+}

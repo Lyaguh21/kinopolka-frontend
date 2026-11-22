@@ -1,0 +1,22 @@
+.page {
+  flex: 1;
+  padding: 0 var(--mantine-spacing-md) 64px;
+}
+
+.number {
+  color: var(--kino-accent);
+  font-weight: 700;
+  font-size: clamp(7rem, 16vw, 13.5rem);
+  line-height: 1.04;
+}
+
+.title {
+  font-size: clamp(1.625rem, 3vw, 2.25rem);
+  line-height: 1.22;
+}
+
+@media (max-width: 600px) {
+  .lineBreak {
+    display: none;
+  }
+}

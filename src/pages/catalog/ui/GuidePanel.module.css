@@ -1,0 +1,142 @@
+.drawer,
+.header {
+  background: var(--kino-raised);
+}
+
+.drawer {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: visible;
+  border-radius: var(--mantine-radius-xl) 0 0 var(--mantine-radius-xl);
+}
+
+.inner {
+  inset: 115px 0 32px auto;
+  width: min(520px, calc(100% - 45px));
+  height: auto;
+}
+
+.closeTab {
+  position: absolute;
+  top: 34px;
+  right: 100%;
+  width: 45px;
+  height: 45px;
+  border-radius: var(--mantine-radius-sm) 0 0 var(--mantine-radius-sm);
+  color: var(--kino-text);
+}
+
+.clear {
+  position: absolute;
+  top: 26px;
+  right: 62px;
+}
+
+.header {
+  border-start-start-radius: var(--mantine-radius-xl);
+}
+
+.body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  padding: var(--mantine-spacing-lg);
+  padding-top: 0;
+}
+
+.messages {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.recommendation {
+  flex-wrap: nowrap;
+}
+
+@media (max-width: 420px) {
+  .body {
+    padding-inline: var(--mantine-spacing-sm);
+  }
+
+  .recommendation {
+    flex-wrap: wrap;
+    gap: var(--mantine-spacing-sm);
+  }
+
+  .recommendationDetails {
+    min-width: min(145px, 100%);
+  }
+}
+
+.question {
+  align-self: flex-end;
+  max-width: 90%;
+  background: var(--kino-control);
+  border-end-end-radius: 2px;
+}
+
+.answer,
+.input {
+  background: var(--kino-canvas);
+}
+
+.answer {
+  border-end-start-radius: 2px;
+}
+
+.input {
+  border: 0;
+}
+
+.mark {
+  position: relative;
+  display: inline-block;
+  flex: none;
+  width: 32px;
+  height: 32px;
+}
+
+.largeSparkle,
+.smallSparkle {
+  position: absolute;
+  width: auto;
+  height: auto;
+}
+
+.largeSparkle {
+  inset: 29% auto auto 7%;
+}
+
+.smallSparkle {
+  inset: 4% auto auto 53%;
+}
+
+.mark[data-variant="recommend"] {
+  width: 16px;
+  height: 16px;
+}
+
+@media (max-height: 660px) {
+  .inner {
+    inset-block: var(--mantine-spacing-md);
+  }
+}
+
+@media (max-width: 767px) {
+  .inner {
+    inset-block-start: calc(
+      var(--kino-mobileHeader) + var(--mantine-spacing-xs)
+    );
+    inset-block-end: max(
+      var(--mantine-spacing-md),
+      env(safe-area-inset-bottom, 0px)
+    );
+  }
+
+  .closeTab {
+    inset-block-start: 0;
+  }
+}

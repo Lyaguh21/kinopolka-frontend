@@ -1,0 +1,43 @@
+.nav {
+  position: fixed;
+  z-index: 20;
+  inset: auto 0 0;
+  align-items: center;
+  gap: 14px;
+  height: var(--kino-mobileBottom);
+  padding: 8px max(8px, env(safe-area-inset-right)) env(safe-area-inset-bottom)
+    max(8px, env(safe-area-inset-left));
+  background: var(--kino-navSurface);
+}
+
+.item {
+  display: grid;
+  place-items: center;
+  height: 44px;
+  color: var(--kino-muted);
+  border-radius: var(--mantine-radius-md);
+}
+
+.item[aria-current="page"],
+.item[data-active="true"] {
+  color: var(--kino-mobileNavIcon);
+  background: var(--kino-mobileNavActive);
+}
+
+.icon {
+  display: block;
+  width: 24px;
+  height: 24px;
+  mask-position: center;
+  mask-repeat: no-repeat;
+  background: currentColor;
+}
+
+.homeIndicator {
+  width: 120px;
+  height: 4px;
+  flex: none;
+  border-radius: 2px;
+  background: var(--kino-text);
+  pointer-events: none;
+}

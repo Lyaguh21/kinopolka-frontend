@@ -1,0 +1,57 @@
+.panel {
+  min-height: 278px;
+  padding: 20px var(--mantine-spacing-lg) var(--mantine-spacing-lg);
+  border-radius: var(--kino-profileRadius);
+  background: var(--kino-profilePanel);
+}
+
+.breakdown {
+  display: grid;
+  grid-template-columns: 205px minmax(0, 1fr);
+  justify-content: start;
+  align-items: center;
+  gap: var(--mantine-spacing-lg);
+}
+
+.chart {
+  position: relative;
+  width: 172px;
+  margin-inline: auto;
+}
+
+.chartLabel {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.legend {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.watchedCard {
+  min-height: 177px;
+  padding: 18px var(--mantine-spacing-md) 26px;
+  border-radius: var(--mantine-radius-lg);
+  background: var(--kino-profileTile);
+}
+
+.track {
+  margin-top: auto;
+  background: var(--kino-profileTrack);
+}
+
+@media (max-width: 570px), (min-width: 992px) and (max-width: 1130px) {
+  .breakdown {
+    grid-template-columns: 1fr;
+  }
+}

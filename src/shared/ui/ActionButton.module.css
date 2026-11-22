@@ -1,0 +1,30 @@
+.wrap {
+  display: inline-flex;
+  max-width: 100%;
+}
+
+.button {
+  min-height: 3rem;
+  border: 0;
+  border-radius: var(--mantine-radius-md);
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.button[data-appearance="primary"] {
+  background: var(--kino-accent);
+  color: var(--kino-canvas);
+}
+
+.button[data-appearance="primary"]:hover {
+  background: var(--mantine-color-coral-4);
+}
+
+.button[data-appearance="secondary"] {
+  background: var(--kino-surface);
+  color: var(--kino-text);
+}
+
+.button[data-appearance="secondary"]:hover {
+  background: var(--kino-border);
+}

@@ -1,0 +1,25 @@
+.shelfFilter {
+  width: max-content;
+  gap: 2px;
+  padding: 4px;
+  border-radius: var(--mantine-radius-md);
+  background: var(--kino-form);
+}
+
+.shelfFilterControl {
+  flex: none;
+}
+
+.shelfFilterLabel {
+  display: flex;
+  align-items: center;
+  height: 36px;
+  padding: 0;
+  color: var(--kino-shelfTabText);
+  font-size: 13px;
+  line-height: normal;
+}
+
+.shelfFilterLabel[data-active] {
+  color: var(--kino-shelfTabActiveText);
+}

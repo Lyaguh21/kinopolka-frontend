@@ -1,0 +1,23 @@
+.input.input[data-variant="default"] {
+  --input-bg: var(--kino-input);
+  --input-bd: var(--kino-inputBorder);
+  --input-bd-focus: var(--kino-inputBorder);
+  --input-placeholder-color: var(--kino-muted);
+  box-shadow: none;
+}
+
+.scrollbar {
+  padding: 0;
+}
+
+.scrollbar .scrollbarThumb {
+  background-color: var(--mantine-primary-color-filled);
+}
+
+.scrollbar:is(:hover, :active) {
+  background-color: transparent;
+}
+
+.scrollbar:is(:hover, :active) > .scrollbarThumb {
+  background-color: var(--mantine-primary-color-filled-hover);
+}

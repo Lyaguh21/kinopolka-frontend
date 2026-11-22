@@ -1,0 +1,21 @@
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.friend {
+  display: block;
+  padding: var(--mantine-spacing-md);
+  border-radius: var(--mantine-radius-lg);
+  background: var(--kino-profilePanel);
+}
+
+.friend:hover {
+  background: var(--kino-profileTile);
+}
+
+.chevron {
+  flex: none;
+  color: var(--kino-muted);
+}

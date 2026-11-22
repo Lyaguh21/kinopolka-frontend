@@ -1,0 +1,20 @@
+.main {
+  width: min(1312px, calc(100% - clamp(32px, 8.89vw, 128px)));
+  margin-inline: auto;
+  padding-block: 48px 56px;
+}
+
+.invite {
+  min-height: 100px;
+  padding: var(--mantine-spacing-md);
+  border: 1px solid var(--kino-border);
+  border-radius: 16px;
+  background: var(--kino-raised);
+}
+
+@media (max-width: 767px) {
+  .main {
+    width: calc(100% - 2 * var(--mantine-spacing-md));
+    padding-block: var(--mantine-spacing-lg) 40px;
+  }
+}

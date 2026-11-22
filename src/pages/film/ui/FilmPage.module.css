@@ -1,0 +1,229 @@
+.hero {
+  --hero-gutter: 64px;
+  position: relative;
+  isolation: isolate;
+}
+
+.backdrop {
+  position: absolute;
+  inset: -48px 0 0 auto;
+  z-index: -2;
+  width: 80%;
+  height: calc(100% + 48px);
+  object-fit: cover;
+  border-radius: var(--mantine-radius-xl);
+}
+
+.hero::before {
+  position: absolute;
+  inset: -48px 0 0;
+  z-index: -1;
+  content: "";
+  border-radius: var(--mantine-radius-xl);
+  background: linear-gradient(
+    90deg,
+    var(--kino-canvas) 8%,
+    color-mix(in srgb, var(--kino-canvas) 80%, transparent) 55%,
+    transparent
+  );
+}
+
+.hero[data-series="true"] .backdrop,
+.hero[data-series="true"]::before {
+  inset-inline: calc(-1 * var(--hero-gutter));
+  width: calc(100% + 2 * var(--hero-gutter));
+  border-radius: 0;
+}
+
+.hero[data-episode="true"]::before {
+  content: none;
+}
+
+.statusSelect.statusSelect[data-variant="default"] {
+  --input-height: 48px;
+  height: 48px;
+  background-color: var(--kino-surface);
+  border-color: var(--kino-surface);
+}
+
+.poster {
+  width: clamp(180px, 21vw, 300px);
+  aspect-ratio: 2 / 3;
+  border-radius: 14px;
+  flex: none;
+}
+
+.heroDetails {
+  gap: clamp(var(--mantine-spacing-lg), 3.4vw, 48px);
+}
+
+.heroCopy {
+  min-width: 0;
+}
+
+.breadcrumbs {
+  flex-wrap: wrap;
+  row-gap: 4px;
+}
+
+.gallery {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: var(--mantine-spacing-lg);
+}
+
+.galleryButton {
+  appearance: none;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.galleryImage {
+  height: clamp(150px, 18vw, 240px);
+}
+
+.playIcon {
+  margin-inline-end: var(--mantine-spacing-xs);
+  vertical-align: middle;
+}
+
+.shadedStill {
+  position: relative;
+}
+
+.shadedStill::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  border-radius: var(--mantine-radius-lg);
+  background: linear-gradient(
+    90deg,
+    var(--kino-canvas),
+    color-mix(in srgb, var(--kino-canvas) 85%, transparent) 55%,
+    transparent
+  );
+}
+
+.panel {
+  background: var(--kino-form);
+}
+
+.reviewForm {
+  border-top: 1px solid var(--kino-border);
+  padding-top: var(--mantine-spacing-lg);
+}
+
+.distribution {
+  display: grid;
+  grid-template-columns: minmax(0, 740px);
+  justify-content: center;
+  gap: var(--mantine-spacing-xl);
+  border-top: 1px solid var(--kino-border);
+  padding-top: var(--mantine-spacing-lg);
+}
+
+.distribution[data-series="true"] {
+  grid-template-columns: minmax(0, 46fr) minmax(0, 54fr);
+}
+
+.viewerScores {
+  width: min(100%, 620px);
+  justify-self: center;
+}
+
+.distribution[data-film="true"] {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.filmViewerScores {
+  display: grid;
+  grid-template-columns: minmax(210px, 1fr) minmax(0, 3fr);
+  align-items: start;
+  width: min(100%, 1120px);
+  justify-self: center;
+}
+
+.stars {
+  gap: clamp(2px, 0.85vw, 12px);
+  align-items: center;
+}
+
+.stars svg {
+  width: var(--rating-size);
+  height: var(--rating-size);
+}
+
+.ratingTrack {
+  background: var(--kino-border);
+}
+
+@media (min-width: 992px) {
+  .seriesCast {
+    --sg-cols: minmax(0, 310px) minmax(0, 550px) 1fr;
+    grid-template-columns: var(--sg-cols);
+  }
+}
+
+@media (max-width: 1199px) {
+  .hero {
+    --hero-gutter: var(--mantine-spacing-xl);
+  }
+}
+
+@media (max-width: 767px) {
+  .hero {
+    --hero-gutter: var(--mantine-spacing-md);
+  }
+  .heroDetails {
+    flex-wrap: wrap;
+    gap: var(--mantine-spacing-lg);
+  }
+
+  .heroCopy {
+    width: 100%;
+  }
+
+  .backdrop,
+  .hero::before {
+    inset-block-start: 0;
+    height: 100%;
+  }
+
+  .poster {
+    width: clamp(132px, 42vw, 200px);
+  }
+
+  .heroActions > * {
+    max-width: 100%;
+  }
+
+  .gallery {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--mantine-spacing-md);
+  }
+
+  .galleryButton:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .galleryImage {
+    aspect-ratio: 16 / 10;
+    height: auto;
+  }
+
+  .distribution[data-series="true"] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .filmViewerScores {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .stars {
+    --rating-size: clamp(18px, 5.7vw, 25px) !important;
+  }
+}

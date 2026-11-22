@@ -1,0 +1,94 @@
+.modal {
+  background: var(--kino-spotlight);
+  border-radius: 14px;
+}
+
+.hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  padding: 0;
+}
+
+.body {
+  padding: 0;
+}
+
+.form {
+  border-bottom: 1px solid var(--kino-border);
+}
+
+.field {
+  height: 64px;
+  padding-inline-start: 54px;
+  background: transparent;
+  border: 0;
+  font-size: 1.3125rem;
+}
+
+.result {
+  padding: 6px var(--mantine-spacing-sm);
+  border-radius: var(--mantine-radius-sm);
+}
+
+.result:hover,
+.result:focus-visible {
+  background: var(--kino-control);
+}
+
+@media (max-width: 767px) {
+  .inner {
+    --modal-inner-y-offset: 80px;
+    --modal-inner-x-offset: 8px;
+  }
+
+  .overlay {
+    background: color-mix(in srgb, var(--kino-playerScrim) 94%, transparent);
+    backdrop-filter: none;
+  }
+
+  .modal {
+    background: var(--kino-navSurface);
+    border-radius: var(--mantine-spacing-md);
+  }
+
+  .body {
+    padding: var(--mantine-spacing-md) var(--mantine-spacing-md) 20px;
+  }
+
+  .form {
+    display: flex;
+    align-items: center;
+    gap: var(--mantine-spacing-sm);
+    border: 0;
+  }
+
+  .fieldRoot {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .field[class] {
+    height: 48px;
+    padding-inline: 48px var(--mantine-spacing-sm);
+    background: var(--kino-surface);
+    border-radius: var(--mantine-radius-lg);
+    font-size: 1rem;
+  }
+
+  .fieldSection[data-position="left"] {
+    width: 48px;
+  }
+
+  .fieldSection[data-position="right"],
+  .results[data-empty-query="true"] {
+    display: none;
+  }
+
+  .prompt,
+  .results {
+    margin-top: var(--mantine-spacing-md);
+  }
+}

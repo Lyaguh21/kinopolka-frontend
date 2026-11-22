@@ -1,0 +1,62 @@
+.link {
+  display: block;
+  border-radius: var(--mantine-radius-lg);
+}
+
+.poster {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  aspect-ratio: 244 / 326;
+  background: var(--kino-surface);
+  border-radius: var(--mantine-radius-lg);
+}
+
+.cover {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ratings {
+  position: absolute;
+  inset: var(--mantine-spacing-sm) auto auto var(--mantine-spacing-sm);
+}
+
+.rating {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding-inline: 9px;
+  background: var(--kino-canvas);
+  border-radius: var(--mantine-radius-xs);
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.favorite {
+  position: absolute;
+  inset: var(--mantine-spacing-sm) var(--mantine-spacing-sm) auto auto;
+  display: grid;
+  place-items: center;
+  padding: 6px 9px;
+  border-radius: var(--mantine-radius-sm);
+  background: var(--kino-favorite);
+  color: var(--kino-accent);
+}
+
+.statusPosition {
+  position: absolute;
+  inset: auto auto var(--mantine-spacing-sm) var(--mantine-spacing-sm);
+}
+
+.status {
+  padding: 6px 10px 6px 9px;
+  background: var(--kino-badge);
+  border-radius: var(--mantine-radius-sm);
+}
+
+.title {
+  overflow-wrap: anywhere;
+}
