@@ -13,16 +13,13 @@ import {
   Tooltip,
 } from "@mantine/core";
 import { IconLogout, IconPencil } from "@tabler/icons-react";
+import { shelfCardsQuery } from "../../../entities/title/api/catalog";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router";
-import { emptySaved, useSavedCollections } from "../../../entities/collection";
-import {
-  getFriends,
-  publicProfiles,
-  useProfiles,
-} from "../../../entities/person";
+import { useCollectionData } from "../../../entities/collection";
+import { publicProfiles, useProfiles } from "../../../entities/person";
 import { useSession } from "../../../entities/session";
-import { emptyShelf, titlesQuery, useShelf } from "../../../entities/title";
+import { emptyShelf, useShelf } from "../../../entities/title";
 import { EmptyState, PageBody } from "../../../shared/ui";
 import { annaShelf } from "../model/anna";
 import { ProfileStatistics } from "./ProfileStatistics";
@@ -35,6 +32,7 @@ import {
   ShelfGrid,
 } from "./ShelfContent";
 
+import { useCommunityProfile } from "../../friends/ui/FriendsPage";
 const friendPlural = new Intl.PluralRules("ru");
 const friendNouns = {
   zero: "друзей",
@@ -53,26 +51,29 @@ export function ProfilePage({
   alex?: boolean;
 }) {
   const account = useSession((state) => state.account);
+  const admin = useSession((s) => s.admin);
   const signOut = useSession((state) => state.signOut);
-  const query = useQuery(titlesQuery);
+
   const ownProfile = useProfiles((state) => state.profiles[account ?? ""]);
   const personal = useShelf(
     (state) => state.shelves[account ?? ""] ?? emptyShelf,
   );
-  const saved = useSavedCollections(
-    (state) => state.byAccount[account ?? ""] ?? emptySaved,
-  );
+  const saved = useCollectionData().data?.filter((c) => c.saved) ?? [];
   const publicProfile = alex
     ? publicProfiles.alex
     : other
       ? annaProfile
       : undefined;
   const profile = publicProfile ?? ownProfile;
-  const friendCount = getFriends(publicProfile?.id).length;
+  const friendCount = useCommunityProfile(account).data?.friends.length;
   const friendsPath = publicProfile
     ? `/profiles/${publicProfile.id}/friends`
     : "/profile/friends";
   const shelf = alex ? emptyShelf : other ? annaShelf : personal;
+  const numericIds = Object.keys(shelf)
+    .filter((id) => /^[1-9]\d*$/.test(id))
+    .sort();
+  const live = useQuery(shelfCardsQuery(numericIds));
   const shelfPath = alex
     ? "/profiles/alex"
     : other
@@ -82,7 +83,7 @@ export function ProfilePage({
   if (!account && !other && !alex)
     return <RequireAccount title="Мой профиль" />;
 
-  const films = query.data ?? [];
+  const films = live.data ?? [];
   const watched = films.filter(({ id }) => shelf[id]?.status === "watched");
   const favorites = films.filter(({ id }) => shelf[id]?.favorite);
   const minutesWatched = watched.reduce(
@@ -95,7 +96,7 @@ export function ProfilePage({
       <Group justify="space-between">
         <Group gap="lg">
           <Avatar
-            src={profile?.avatar ?? annaProfile.avatar}
+            src={profile?.avatar}
             alt=""
             style={{ "--avatar-size": "clamp(5.25rem, 14.6vw, 7rem)" }}
             radius="xl"
@@ -117,7 +118,11 @@ export function ProfilePage({
                 ·
               </Text>
               <Anchor component={Link} to={friendsPath} c="dimmed" fz="inherit">
-                {friendCount} {friendNouns[friendPlural.select(friendCount)]}
+                {friendCount === undefined
+                  ? "Друзья"
+                  : friendCount +
+                    " " +
+                    friendNouns[friendPlural.select(friendCount)]}
               </Anchor>
             </Group>
             {profile?.bio && (
@@ -127,6 +132,11 @@ export function ProfilePage({
         </Group>
         {!other && !alex && (
           <Group gap="xs">
+            {admin && (
+              <Anchor component={Link} to="/admin">
+                Управление сайтом
+              </Anchor>
+            )}
             <Tooltip label="Редактировать профиль">
               <ActionIcon
                 size={44}
@@ -143,9 +153,8 @@ export function ProfilePage({
                 size={44}
                 variant="default"
                 aria-label="Выйти"
-                onClick={() => {
-                  signOut();
-                  navigate("/");
+                onClick={async () => {
+                  if (await signOut()) navigate("/");
                 }}
               >
                 <IconLogout size={21} aria-hidden />
@@ -224,9 +233,9 @@ export function ProfilePage({
                   {link} →
                 </Anchor>
               </Group>
-              {query.isPending ? (
+              {numericIds.length > 0 && live.isPending ? (
                 <Skeleton h={124} radius="lg" />
-              ) : query.isError ? (
+              ) : live.isError ? (
                 <Text c="dimmed">Не удалось загрузить список.</Text>
               ) : titles.length ? (
                 <ShelfGrid

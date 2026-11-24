@@ -11,7 +11,7 @@ import classes from "./ReviewCard.module.css";
 
 export interface Review {
   author: string;
-  rating: number;
+  rating: number | null;
   title: string;
   body: string;
   likes: number;
@@ -27,11 +27,23 @@ const colors = [
   "ratingGreat",
 ];
 
-export function ReviewCard({ review }: { review: Review }) {
-  const [reaction, setReaction] = useState<"like" | "dislike" | null>(null);
+type Reaction = "like" | "dislike" | null;
+export function ReviewCard({
+  review,
+  reaction = null,
+  onReact,
+  disabled,
+}: {
+  review: Review;
+  reaction?: Reaction;
+  onReact?: (kind: Reaction) => void;
+  disabled?: boolean;
+}) {
   const [showSpoiler, setShowSpoiler] = useState(false);
   const color =
-    colors[Math.min(4, Math.max(0, Math.floor((review.rating - 1) / 2)))];
+    colors[
+      Math.min(4, Math.max(0, Math.floor(((review.rating ?? 1) - 1) / 2)))
+    ];
 
   return (
     <Paper
@@ -39,13 +51,15 @@ export function ReviewCard({ review }: { review: Review }) {
       className={classes.review}
       style={{
         borderInlineStartColor:
-          review.rating >= 7 ? "var(--kino-positive)" : `var(--kino-${color})`,
+          (review.rating ?? 0) >= 7
+            ? "var(--kino-positive)"
+            : `var(--kino-${color})`,
       }}
     >
       <Stack gap="sm">
         <Group gap="sm">
           <Text fz={48} fw={600} lh={1.1} c={`var(--kino-${color})`}>
-            {review.rating}
+            {review.rating ?? "—"}
           </Text>
           <Text fz={24} fw={600}>
             {review.author}
@@ -72,9 +86,8 @@ export function ReviewCard({ review }: { review: Review }) {
               className={classes.reaction}
               aria-label={kind === "like" ? "Нравится" : "Не нравится"}
               aria-pressed={reaction === kind}
-              onClick={() =>
-                setReaction((previous) => (previous === kind ? null : kind))
-              }
+              disabled={disabled || !onReact}
+              onClick={() => onReact?.(reaction === kind ? null : kind)}
             >
               <Image
                 src={`/figma/review-${kind}.svg`}
@@ -83,8 +96,7 @@ export function ReviewCard({ review }: { review: Review }) {
                 h={18}
                 className={kind === "dislike" ? classes.dislike : undefined}
               />
-              {(kind === "like" ? review.likes : (review.dislikes ?? 0)) +
-                Number(reaction === kind)}
+              {kind === "like" ? review.likes : (review.dislikes ?? 0)}
             </UnstyledButton>
           ))}
         </Group>

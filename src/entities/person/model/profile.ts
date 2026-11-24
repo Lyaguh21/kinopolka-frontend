@@ -1,7 +1,7 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { http } from "../../../shared/api/http";
 
-interface Profile {
+export interface Profile {
   name: string;
   handle: string;
   bio: string;
@@ -11,18 +11,32 @@ interface Profile {
 
 interface ProfilesState {
   profiles: Record<string, Profile>;
-  save: (account: string, profile: Profile) => void;
+  load: (account: string, profile: Profile | null) => void;
+  save: (account: string, profile: Profile) => Promise<void>;
 }
-
-export const useProfiles = create<ProfilesState>()(
-  persist(
-    (set) => ({
-      profiles: {},
-      save: (account, profile) =>
-        set(({ profiles }) => ({
-          profiles: { ...profiles, [account]: profile },
-        })),
-    }),
-    { name: "kinopolka-profiles" },
-  ),
-);
+export const useProfiles = create<ProfilesState>((set, get) => ({
+  profiles: {},
+  load: (account, profile) => {
+    if (!profile) {
+      try {
+        profile =
+          JSON.parse(localStorage.getItem("kinopolka-profiles") ?? "null")
+            ?.state?.profiles?.[account] ?? null;
+      } catch {
+        /* Профиль ещё не создан */
+      }
+    }
+    set((state) => {
+      const profiles = { ...state.profiles };
+      if (profile) profiles[account] = profile;
+      else delete profiles[account];
+      return { profiles };
+    });
+  },
+  save: async (account, profile) => {
+    const result = await http.patch<Profile>("api/me/profile", profile, {
+      headers: { "X-Filmets-Account": account },
+    });
+    get().load(account, result.data);
+  },
+}));

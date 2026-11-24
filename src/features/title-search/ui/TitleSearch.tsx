@@ -16,26 +16,14 @@ import { useQuery } from "@tanstack/react-query";
 import { useReducedMotion } from "motion/react";
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router";
-import { titlesQuery } from "../../../entities/title";
+import {
+  catalogQuery,
+  filmCard,
+  peopleSearchQuery,
+} from "../../../entities/title/api/catalog";
+import { useDebouncedValue } from "@mantine/hooks";
 import classes from "./TitleSearch.module.css";
 import { EmptyState } from "../../../shared/ui";
-
-const people = [
-  {
-    name: "Кристофер Нолан",
-    description: "Режиссёр · Интерстеллар",
-    avatar: "/figma/christopher-nolan.png",
-    to: "/people/christopher-nolan",
-    keywords: "кристофер нолан christopher nolan интерстеллар",
-  },
-  {
-    name: "Анна К.",
-    description: "Автор подборки «Интерстеллар и дальше»",
-    avatar: "/figma/profile-avatar.png",
-    to: "/profiles/anna",
-    keywords: "анна к. интерстеллар anna",
-  },
-];
 
 export function TitleSearch({
   opened,
@@ -44,17 +32,23 @@ export function TitleSearch({
   opened: boolean;
   onClose: () => void;
 }) {
-  const query = useQuery({ ...titlesQuery, enabled: opened });
   const [value, setValue] = useState("");
   const reducedMotion = useReducedMotion();
   const navigate = useNavigate();
   const phrase = value.trim().toLocaleLowerCase("ru");
-  const results = (query.data ?? [])
-    .filter(({ name }) => name.toLocaleLowerCase("ru").includes(phrase))
-    .slice(0, 6);
-  const peopleResults = phrase
-    ? people.filter(({ keywords }) => keywords.includes(phrase))
-    : [];
+  const [debounced] = useDebouncedValue(phrase, 200);
+  const query = useQuery({
+    ...catalogQuery({ q: debounced, limit: 6 }),
+    enabled: opened,
+  });
+  const results =
+    phrase === debounced ? (query.data?.items.map(filmCard) ?? []) : [];
+  const people = useQuery({
+    ...peopleSearchQuery(debounced),
+    enabled: opened && !!debounced,
+  });
+  const peopleResults =
+    phrase && phrase === debounced ? (people.data ?? []) : [];
 
   function closeSearch() {
     setValue("");
@@ -63,7 +57,11 @@ export function TitleSearch({
 
   function submit(event: FormEvent) {
     event.preventDefault();
-    const first = results[0] ? `/title/${results[0].id}` : peopleResults[0]?.to;
+    const first = results[0]
+      ? `/title/${results[0].id}`
+      : peopleResults[0]
+        ? "/people/" + peopleResults[0].id
+        : undefined;
     if (!first) return;
     navigate(first);
     closeSearch();
@@ -96,6 +94,7 @@ export function TitleSearch({
           data-autofocus
           aria-label="Название фильма или сериала"
           placeholder="Что ищем?"
+          maxLength={200}
           value={value}
           onChange={(event) => setValue(event.currentTarget.value)}
           leftSection={<IconSearch size={22} aria-hidden />}
@@ -172,9 +171,13 @@ export function TitleSearch({
             )}
             {peopleResults.map((person) => (
               <Group
-                key={person.to}
+                key={person.id}
                 renderRoot={(props) => (
-                  <Link {...props} to={person.to} onClick={closeSearch} />
+                  <Link
+                    {...props}
+                    to={"/people/" + person.id}
+                    onClick={closeSearch}
+                  />
                 )}
                 className={classes.result}
                 wrap="nowrap"
@@ -183,18 +186,20 @@ export function TitleSearch({
                 <Stack gap={0}>
                   <Text fz={17}>{person.name}</Text>
                   <Text fz={13} c="dimmed">
-                    {person.description}
+                    Персона
                   </Text>
                 </Stack>
               </Group>
             ))}
             {!results.length &&
               !peopleResults.length &&
-              (query.isSuccess ? (
+              (query.isSuccess &&
+              (!phrase || people.isSuccess) &&
+              phrase === debounced ? (
                 <EmptyState compact message="Ничего не найдено." />
               ) : (
                 <Text p="sm" c="dimmed">
-                  {query.isPending
+                  {query.isPending || people.isFetching || phrase !== debounced
                     ? "Загружаем фильмы…"
                     : "Поиск временно недоступен"}
                 </Text>

@@ -6,6 +6,8 @@ import {
   Group,
   Image,
   Select,
+  Pagination,
+  TextInput,
   SimpleGrid,
   Skeleton,
   Stack,
@@ -15,13 +17,19 @@ import {
 } from "@mantine/core";
 import { IconCategory, IconDeviceTv, IconMovie } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
+import {
+  catalogQuery,
+  genreQuery,
+  filmCard,
+} from "../../../entities/title/api/catalog";
+import { useDebouncedValue } from "@mantine/hooks";
 import { useState } from "react";
 import { useSearchParams } from "react-router";
 import { useSession } from "../../../entities/session";
 import {
   emptyShelf,
+  excludedTitles,
   TitleCard,
-  titlesQuery,
   useShelf,
   type TitleKind,
 } from "../../../entities/title";
@@ -34,7 +42,7 @@ const kinds = [
   { value: "all", label: "Всё", icon: <IconCategory size={16} aria-hidden /> },
   {
     value: "recommended",
-    label: "Рекомендации",
+    label: "Высокий рейтинг",
     icon: <GuideMark variant="recommend" />,
   },
   {
@@ -53,61 +61,51 @@ const kinds = [
     icon: <Image src="/figma/catalog-anime.svg" alt="" w="auto" h={16} />,
   },
 ] as const;
-const countryByTitle: Record<string, string[]> = {
-  interstellar: ["США", "Великобритания"],
-  dune: ["США", "Канада"],
-  "dune-2021": ["США", "Канада"],
-  severance: ["США"],
-  inception: ["США", "Великобритания"],
-  arrival: ["США", "Канада"],
-  "blade-runner": ["США", "Великобритания", "Канада"],
-  "spirited-away": ["Япония"],
-  "grand-budapest": ["США", "Германия"],
-};
 const sortOptions = ["По популярности", "По рейтингу", "По году выхода"];
-const popularity = [
-  "interstellar",
-  "dune",
-  "dune-2021",
-  "inception",
-  "arrival",
-  "blade-runner",
-  "spirited-away",
-  "severance",
-  "grand-budapest",
-];
-
+const countryCodes: Record<string, string> = {
+  США: "US",
+  Великобритания: "GB",
+  Япония: "JP",
+  Канада: "CA",
+  Германия: "DE",
+};
 export function CatalogPage() {
-  const query = useQuery(titlesQuery);
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [q] = useDebouncedValue(search.trim(), 250);
+  const genreList = useQuery(genreQuery);
   const [params, setParams] = useSearchParams();
   const [kind, setKind] = useState<TitleKind | "all" | "recommended">("all");
   const [filters, setFilters] = useState(initial);
   const [sort, setSort] = useState(sortOptions[0]);
   const account = useSession((state) => state.account);
   const shelf = useShelf((state) => state.shelves[account ?? ""] ?? emptyShelf);
-  const results = (query.data ?? [])
-    .filter((title) => {
-      const year = Number(title.year.slice(0, 4));
-      return (
-        (kind === "all" ||
-          kind === title.kind ||
-          (kind === "recommended" && Number(title.rating) >= 8.5)) &&
-        (!filters.genres.length || filters.genres.includes(title.genre)) &&
-        (!filters.from || year >= Number(filters.from)) &&
-        (!filters.to || year <= Number(filters.to)) &&
-        (!filters.rating || Number(title.rating) >= Number(filters.rating)) &&
-        (!filters.country.length ||
-          filters.country.some((country) =>
-            countryByTitle[title.id]?.includes(country),
-          )) &&
-        (!filters.hideWatched || shelf[title.id]?.status !== "watched")
-      );
-    })
-    .sort((a, b) => {
-      if (sort === sortOptions[1]) return Number(b.rating) - Number(a.rating);
-      if (sort === sortOptions[2]) return b.year.localeCompare(a.year);
-      return popularity.indexOf(a.id) - popularity.indexOf(b.id);
-    });
+  const query = useQuery(
+    catalogQuery({
+      page,
+      limit: 20,
+      q: q || undefined,
+      type:
+        kind === "Фильм" ? "movie" : kind === "Сериал" ? "series" : undefined,
+      anime: kind === "Аниме" || undefined,
+      genres: filters.genres.join(",") || undefined,
+      from: filters.from || undefined,
+      to: filters.to || undefined,
+      countries:
+        filters.country.map((c) => countryCodes[c]).join(",") || undefined,
+      minRating: filters.rating || undefined,
+      exclude: filters.hideWatched
+        ? Object.keys(shelf)
+            .filter((id) => /^\d+$/.test(id) && shelf[id]?.status === "watched")
+            .join(",") || undefined
+        : undefined,
+      sort:
+        kind === "recommended"
+          ? "rating"
+          : ["popular", "rating", "newest"][sortOptions.indexOf(sort)],
+    }),
+  );
+  const results = query.data?.items.map(filmCard) ?? [];
   function setGuide(opened: boolean) {
     setParams(
       (previous) => {
@@ -146,7 +144,10 @@ export function CatalogPage() {
             className={classes.tag}
             key={value}
             variant={value === kind ? "filled" : "default"}
-            onClick={() => setKind(value)}
+            onClick={() => {
+              setKind(value);
+              setPage(1);
+            }}
             leftSection={icon}
             aria-pressed={value === kind}
           >
@@ -156,23 +157,40 @@ export function CatalogPage() {
       </Group>
       <Box className={classes.layout}>
         <CatalogFilters
-          apply={setFilters}
+          genres={[...new Set(genreList.data?.map((g) => g.name))].sort()}
+          apply={(v) => {
+            setFilters(v);
+            setPage(1);
+          }}
           onReset={() => {
             setFilters(initial);
+            setPage(1);
+            setSearch("");
             setKind("all");
           }}
         />
         <Stack component="section" gap="lg" aria-label="Результаты">
+          <TextInput
+            label="Поиск по названию"
+            placeholder="Например, Интерстеллар"
+            maxLength={200}
+            value={search}
+            onChange={(e) => {
+              setSearch(e.currentTarget.value);
+              setPage(1);
+            }}
+          />
           <Group justify="space-between">
             <Text c="dimmed" aria-live="polite">
-              Найдено произведений: {results.length}
+              Найдено произведений: {query.data?.total ?? "…"}
             </Text>
             <Select
               aria-label="Сортировать каталог"
               data={sortOptions}
-              value={sort}
+              value={kind === "recommended" ? sortOptions[1] : sort}
+              disabled={kind === "recommended"}
               allowDeselect={false}
-              onChange={(value) => value && setSort(value)}
+              onChange={(value) => value && (setSort(value), setPage(1))}
             />
           </Group>
           {query.isPending && <Skeleton h={326} radius="lg" />}
@@ -200,9 +218,18 @@ export function CatalogPage() {
               />
             ))}
           </SimpleGrid>
+          {query.data && query.data.totalPages > 1 && (
+            <Pagination
+              total={query.data.totalPages}
+              value={page}
+              onChange={setPage}
+            />
+          )}
         </Stack>
       </Box>
       <GuidePanel
+        key={JSON.stringify([account, excludedTitles(shelf)])}
+        exclude={excludedTitles(shelf)}
         opened={params.get("guide") === "1"}
         onClose={() => setGuide(false)}
       />

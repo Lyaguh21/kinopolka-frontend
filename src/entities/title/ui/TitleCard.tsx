@@ -69,7 +69,7 @@ export function TitleCard({
         {title.name}
       </Text>
       <Text c="dimmed" fz={13} lh={1.4}>
-        {title.year} · {title.genre} · {title.kind}
+        {[title.year, title.genre, title.kind].filter(Boolean).join(" · ")}
       </Text>
     </Stack>
   );

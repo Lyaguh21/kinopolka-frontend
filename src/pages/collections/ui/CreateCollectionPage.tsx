@@ -13,6 +13,7 @@ import { useState, type FormEvent } from "react";
 import { Link, Navigate, useNavigate } from "react-router";
 import { useCreateCollection } from "../../../entities/collection";
 import { useProfiles } from "../../../entities/person";
+import { requestError } from "../../../entities/session/model/session";
 import { useSession } from "../../../entities/session";
 import type { FilmTitle } from "../../../entities/title";
 import { ActionButton, PageBody } from "../../../shared/ui";
@@ -40,24 +41,30 @@ export function CreateCollectionPage() {
 
   function addFilm(film: FilmTitle) {
     setFilms((current) =>
-      current.some(({ id }) => id === film.id) ? current : [...current, film],
+      current.length >= 100 || current.some(({ id }) => id === film.id)
+        ? current
+        : [...current, film],
     );
   }
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!account || !isValid) return;
+    if (!account || !isValid || createCollection.isPending) return;
 
-    const id = createCollection({
-      name: name.trim(),
-      description: description.trim(),
-      author: profile?.name || account,
-      avatar: profile?.avatar ?? "/figma/avatar.png",
-      owner: account,
-      titles: films.map(({ id }) => id),
-      cover: films[0].poster,
-    });
-    navigate("/collections/" + id, { replace: true });
+    try {
+      const id = await createCollection.mutateAsync({
+        name: name.trim(),
+        description: description.trim(),
+        author: profile?.name || account,
+        avatar: profile?.avatar,
+        owner: account,
+        titles: films.map(({ id }) => id),
+        cover: films[0].poster,
+      });
+      navigate("/collections/" + id, { replace: true });
+    } catch {
+      /* Ошибка отображается рядом с кнопкой. */
+    }
   }
 
   return (
@@ -125,6 +132,7 @@ export function CreateCollectionPage() {
                 }
                 aria-label="Описание"
                 aria-describedby="collection-description-hint"
+                maxLength={4000}
                 value={description}
                 onChange={(event) => setDescription(event.currentTarget.value)}
                 placeholder="Что объединяет эти фильмы?"
@@ -153,7 +161,14 @@ export function CreateCollectionPage() {
           />
         </Box>
         <Group gap="md" align="flex-start" className={classes.actions}>
-          <ActionButton w={208} type="submit" disabled={!isValid}>
+          {createCollection.isError && (
+            <Text c="red">{requestError(createCollection.error)}</Text>
+          )}
+          <ActionButton
+            w={208}
+            type="submit"
+            disabled={!isValid || createCollection.isPending}
+          >
             Создать подборку
           </ActionButton>
           <ActionButton

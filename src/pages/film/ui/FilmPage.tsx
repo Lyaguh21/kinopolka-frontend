@@ -1,193 +1,176 @@
 import {
   Anchor,
+  Button,
   Group,
-  SimpleGrid,
+  Image,
   Skeleton,
   Stack,
+  Text,
   Title,
 } from "@mantine/core";
-import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
-import {
-  Link,
-  useLocation,
-  useNavigate,
-  useParams,
-  useSearchParams,
-} from "react-router";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link, Navigate, useParams, useSearchParams } from "react-router";
+import { isAxiosError } from "axios";
 import { useSession } from "../../../entities/session";
+import { http } from "../../../shared/api/http";
+import { PageBody, NotFoundView } from "../../../shared/ui";
 import {
-  episodeHref,
-  nextEpisode,
-  recentTitleViewer,
-  severanceScores,
-  TitleCard,
-  titlesQuery,
-  useRecentTitle,
-  useShelf,
-  type ShelfEntry,
-} from "../../../entities/title";
-import { WatchSourcesModal } from "../../../features/watch-sources";
-import { ActionButton, NotFoundView, PageBody } from "../../../shared/ui";
-import { getEpisode } from "../model/titleDetails";
-import { TitleHero } from "./TitleHero";
-import { TitleMedia } from "./TitleMedia";
-import { TitleRatings } from "./TitleRatings";
-
-const relatedSeriesIds = [
-  "dune",
-  "inception",
-  "arrival",
-  "blade-runner",
-  "spirited-away",
-];
-
-export function FilmPage() {
-  const { id, episode: episodeParam } = useParams();
-  const { hash } = useLocation();
-  const [params] = useSearchParams();
-  const navigate = useNavigate();
-  const titles = useQuery(titlesQuery);
-  const account = useSession((state) => state.account);
-  const viewer = recentTitleViewer(account);
-  const episodeNumber = Number(episodeParam);
-  const season = params.get("season") === "2" ? 2 : 1;
-  const episode = getEpisode(id, season, episodeNumber);
-  const entryId = episode ? [id, season, episodeNumber].join(":") : id;
-  const entry = useShelf((state) =>
-    account && entryId ? state.shelves[account]?.[entryId] : undefined,
-  );
-  const update = useShelf((state) => state.update);
-  const rememberTitle = useRecentTitle((state) => state.remember);
-  const rememberEpisode = useRecentTitle((state) => state.rememberEpisode);
-  const [sourcesOpen, setSourcesOpen] = useState(false);
-  const title = titles.data?.find((item) => item.id === id);
-
-  useEffect(() => {
-    if (title && !episodeParam) rememberTitle(viewer, title.id);
-  }, [episodeParam, rememberTitle, title, viewer]);
-
-  useEffect(() => {
-    if (title && hash === "#ratings")
-      document.getElementById("ratings")?.scrollIntoView();
-  }, [title, hash]);
-
-  if (titles.isPending)
-    return (
+  detailQuery,
+  shelfCardsQuery,
+} from "../../../entities/title/api/catalog";
+import classes from "./FilmPage.module.css";
+import { TitleRatings, type ViewerScore } from "./TitleRatings";
+import { CatalogFilm } from "./CatalogFilm";
+function Episode({
+  id,
+  episode,
+  season,
+}: {
+  id: string;
+  episode: string;
+  season: string;
+}) {
+  const account = useSession((s) => s.account),
+    client = useQueryClient(),
+    detail = useQuery(detailQuery(id));
+  const url =
+    "api/titles/" +
+    id +
+    "/seasons/" +
+    season +
+    "/episodes/" +
+    episode +
+    "/rating";
+  const key = ["episode-rating", url, account ?? null];
+  const score = useQuery({
+    queryKey: key,
+    queryFn: async ({ signal }) =>
+      (
+        await http.get<
+          ViewerScore & {
+            votes: number;
+            average: number | null;
+            mine: number | null;
+          }
+        >(url, { signal })
+      ).data,
+    retry: false,
+  });
+  const update = useMutation({
+    mutationFn: (rating: number | null) =>
+      http.patch(
+        url,
+        { rating },
+        { headers: { "X-Filmets-Account": account } },
+      ),
+    onSuccess: () =>
+      Promise.all([
+        client.invalidateQueries({ queryKey: ["episode-rating", url] }),
+        client.invalidateQueries({ queryKey: ["episode-scores", id] }),
+      ]),
+  });
+  if (score.isError || detail.isError) {
+    const err = score.error ?? detail.error;
+    return isAxiosError(err) &&
+      [400, 404].includes(err.response?.status ?? 0) ? (
+      <NotFoundView />
+    ) : (
       <PageBody>
-        <Skeleton height={480} />
+        <Button
+          onClick={() => {
+            score.refetch();
+            detail.refetch();
+          }}
+        >
+          Повторить загрузку серии
+        </Button>
       </PageBody>
     );
-  if (titles.isError && !title)
-    return (
-      <PageBody>
-        <Title order={1}>Не удалось загрузить фильм</Title>
-        <Anchor component={Link} to="/catalog">
-          К каталогу
-        </Anchor>
-      </PageBody>
-    );
-  if (!title || (episodeParam && !episode)) return <NotFoundView />;
-
-  const isSeverance = title.id === "severance";
-  const next = nextEpisode(episode?.location);
-  const previousHref =
-    episodeNumber > 1
-      ? episodeHref(season, episodeNumber - 1)
-      : season > 1
-        ? episodeHref(season - 1, severanceScores[season - 2].length)
-        : undefined;
-
-  function updateEntry(change: Partial<ShelfEntry>) {
-    if (account && entryId) update(account, entryId, change);
-    else if (id)
-      navigate(
-        "/login-required?title=" +
-          id +
-          (change.favorite ? "&action=favorite" : ""),
-      );
   }
-
+  if (!score.data || !detail.data)
+    return (
+      <PageBody>
+        <Skeleton h={240} />
+      </PageBody>
+    );
+  const seasonInfo = detail.data.seasons.find(
+    (s) => s.seasonNumber === Number(season),
+  );
   return (
     <PageBody>
-      <TitleHero
-        title={title}
-        episode={episode}
-        entry={entry}
-        updateEntry={updateEntry}
-        onWatch={() => {
-          if (episode) rememberEpisode(viewer, episode.location);
-          setSourcesOpen(true);
-        }}
-      />
-      {!episode && <TitleMedia title={title} />}
-      <TitleRatings
-        title={title}
-        episode={episode}
-        account={account}
-        rating={entry?.rating}
-        onRate={(rating) => updateEntry({ rating })}
-      />
-      {episode ? (
-        <Group justify="center">
-          <ActionButton
-            appearance="secondary"
-            disabled={!previousHref}
-            onClick={() => previousHref && navigate(previousHref)}
-          >
-            ← Предыдущая серия
-          </ActionButton>
-          <ActionButton
-            disabled={!next}
-            onClick={() =>
-              next && navigate(episodeHref(next.season, next.episode))
-            }
-          >
-            Следующая серия →
-          </ActionButton>
-        </Group>
-      ) : (
-        <Stack component="section" gap="lg">
-          <Group justify="space-between">
-            <Title order={2}>
-              {isSeverance
-                ? "Если понравился этот сериал"
-                : "Если понравился этот фильм"}
-            </Title>
-            <Anchor component={Link} to="/catalog" fz={14}>
-              В каталог →
-            </Anchor>
-          </Group>
-          <SimpleGrid cols={{ base: 2, sm: 3, lg: 5 }} spacing="lg">
-            {titles.data
-              ?.filter((item) =>
-                isSeverance
-                  ? relatedSeriesIds.includes(item.id)
-                  : item.id !== title.id,
-              )
-              .sort((a, b) =>
-                isSeverance
-                  ? relatedSeriesIds.indexOf(a.id) -
-                    relatedSeriesIds.indexOf(b.id)
-                  : 0,
-              )
-              .slice(0, 5)
-              .map((item) => (
-                <TitleCard
-                  key={item.id}
-                  title={item}
-                  to={`/title/${item.id}`}
-                />
-              ))}
-          </SimpleGrid>
+      <Anchor component={Link} to={"/title/" + id}>
+        {detail.data.title}
+      </Anchor>
+      <Group align="flex-start" className={classes.heroDetails}>
+        {(seasonInfo?.posterUrl || detail.data.posterUrl) && (
+          <Image
+            className={classes.poster}
+            src={seasonInfo?.posterUrl ?? detail.data.posterUrl}
+            alt={"Постер · " + detail.data.title}
+          />
+        )}
+        <Stack>
+          <Text c="dimmed">
+            {detail.data.title} · {seasonInfo?.name}
+          </Text>
+          <Title>Серия {episode}</Title>
         </Stack>
-      )}
-      <WatchSourcesModal
-        title={title}
-        episode={episode?.location}
-        opened={sourcesOpen}
-        onClose={() => setSourcesOpen(false)}
+      </Group>
+      <TitleRatings
+        score={score.data}
+        rating={score.data.mine}
+        pending={update.isPending}
+        onRate={account ? (v) => update.mutate(v) : undefined}
       />
+      {!account && (
+        <Anchor
+          component={Link}
+          to="/login"
+          state={{
+            returnTo:
+              "/title/" + id + "/episodes/" + episode + "?season=" + season,
+          }}
+        >
+          Войти, чтобы оценить серию
+        </Anchor>
+      )}
+      {update.isError && <Text c="red">Не удалось сохранить оценку.</Text>}
+      <Group justify="center">
+        {[Number(episode) - 1, Number(episode) + 1]
+          .filter((n) => n > 0 && n <= (seasonInfo?.episodeCount ?? 0))
+          .map((n) => (
+            <Button
+              variant={n > Number(episode) ? "filled" : "default"}
+              key={n}
+              component={Link}
+              to={"/title/" + id + "/episodes/" + n + "?season=" + season}
+            >
+              {n > Number(episode) ? "Следующая серия →" : "← Предыдущая серия"}
+            </Button>
+          ))}
+      </Group>
     </PageBody>
   );
+}
+export function FilmPage() {
+  const { id, episode } = useParams(),
+    [params] = useSearchParams();
+  if (id && /^\d+$/.test(id))
+    return episode ? (
+      <Episode id={id} episode={episode} season={params.get("season") ?? "1"} />
+    ) : (
+      <CatalogFilm id={id} />
+    );
+  return <LegacyTitle id={id ?? ""} />;
+}
+function LegacyTitle({ id }: { id: string }) {
+  const query = useQuery({ ...shelfCardsQuery([id]), retry: false });
+  if (query.isPending)
+    return (
+      <PageBody>
+        <Skeleton h={320} />
+      </PageBody>
+    );
+  if (!query.data?.length) return <NotFoundView />;
+  return <Navigate replace to={"/title/" + query.data[0].id} />;
 }

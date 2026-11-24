@@ -1,3 +1,5 @@
+import { useQueryClient } from "@tanstack/react-query";
+import { requestError } from "../../../entities/session/model/session";
 import {
   Avatar,
   Box,
@@ -17,14 +19,17 @@ import { useNavigate } from "react-router";
 import { useProfiles } from "../../../entities/person";
 import { useSession } from "../../../entities/session";
 import { ActionButton, PageBody } from "../../../shared/ui";
-import { annaProfile, RequireAccount } from "./ShelfContent";
+import { RequireAccount } from "./ShelfContent";
 
 export function EditProfilePage() {
   const account = useSession((state) => state.account);
   const profile = useProfiles((state) => state.profiles[account ?? ""]);
   const save = useProfiles((state) => state.save);
+  const client = useQueryClient();
   const navigate = useNavigate();
   const [avatar, setAvatar] = useState(profile?.avatar);
+  const [busy, setBusy] = useState(false),
+    [error, setError] = useState("");
   const [avatarError, setAvatarError] = useState("");
   if (!account) return <RequireAccount title="Редактирование профиля" />;
 
@@ -63,20 +68,30 @@ export function EditProfilePage() {
     }
   }
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!account) return;
     const form = new FormData(event.currentTarget);
     const value = (key: string) => String(form.get(key) ?? "").trim();
     if (!value("name") || !value("handle")) return;
-    save(account, {
-      name: value("name"),
-      handle: value("handle"),
-      bio: value("bio"),
-      email: value("email"),
-      avatar,
-    });
-    navigate("/profile");
+    if (busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      await save(account, {
+        name: value("name"),
+        handle: value("handle"),
+        bio: value("bio"),
+        email: value("email"),
+        avatar,
+      });
+      await client.invalidateQueries({ queryKey: ["public-profile", account] });
+      navigate("/profile");
+    } catch (e) {
+      setError(requestError(e));
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -94,7 +109,7 @@ export function EditProfilePage() {
           <Stack gap="lg">
             <Group>
               <Avatar
-                src={avatar ?? annaProfile.avatar}
+                src={avatar}
                 alt="Фотография профиля"
                 size={88}
                 radius="xl"
@@ -150,7 +165,10 @@ export function EditProfilePage() {
           </Stack>
         </Paper>
         <Group justify="flex-end">
-          <ActionButton type="submit">Сохранить изменения</ActionButton>
+          {error && <Text c="red">{error}</Text>}
+          <ActionButton type="submit" disabled={busy}>
+            Сохранить изменения
+          </ActionButton>
           <ActionButton
             appearance="secondary"
             onClick={() => navigate("/profile")}

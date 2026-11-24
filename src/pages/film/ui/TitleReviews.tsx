@@ -12,62 +12,62 @@ import {
 } from "@mantine/core";
 import { useState, type FormEvent, type ReactNode } from "react";
 import { Link } from "react-router";
-import { ReviewCard, type Review } from "../../../entities/review";
+import { ReviewCard } from "../../../entities/review";
 import { ActionButton } from "../../../shared/ui";
-import { emptyReviews, useReviews } from "../model/reviews";
+import { useMutation } from "@tanstack/react-query";
+import { http } from "../../../shared/api/http";
+import { requestError } from "../../../entities/session/model/session";
 import classes from "./FilmPage.module.css";
 
-const severanceReview: Review = {
-  author: "Анна К.",
-  rating: 9,
-  title: "В Lumon страшнее всего вежливость",
-  body: "Белые коридоры и спокойные голоса сначала кажутся смешными. К концу серии та же улыбка начальника уже пугает.",
-  likes: 128,
-};
-const filmReviews: Record<string, Review[]> = {
-  interstellar: [
-    {
-      author: "Анна К.",
-      rating: 9,
-      title: "Большое кино, в котором важно самое близкое",
-      body: "Иногда сильнее всего запоминается не масштаб кадра, а короткое сообщение от тех, кто остался на Земле.",
-      likes: 128,
-    },
-    {
-      author: "Алексей М.",
-      rating: 3,
-      title: "Тишина космоса",
-      body: "Музыка и крупные планы впечатляют, но история раскрылась для меня только к финалу.",
-      likes: 2,
-    },
-  ],
-  severance: [
-    severanceReview,
-    { ...severanceReview, rating: 3 },
-    {
-      author: "Алексей М.",
-      rating: 8,
-      title: "По другую сторону лифта",
-      body: "Один и тот же коридор ощущается по-разному, когда начинаешь понимать правила этого места.",
-      likes: 12,
-    },
-  ],
-};
-
+export interface ReviewRow {
+  id: number;
+  nickname: string;
+  rating: number | null;
+  title: string | null;
+  body: string;
+  spoiler: boolean;
+  likes: number;
+  dislikes: number;
+  reaction: "like" | "dislike" | null;
+}
 export function TitleReviews({
   id,
   account,
   rating,
   ratingPanel,
+  series,
+  own,
+  reviews,
+  total,
+  loadMore,
+  loadingMore,
+  refresh,
+  ready,
 }: {
   id: string;
   account?: string;
   rating?: number;
   ratingPanel: ReactNode;
+  series: boolean;
+  own?: Pick<ReviewRow, "id" | "title" | "body" | "spoiler"> | null;
+  reviews: ReviewRow[];
+  total: number;
+  loadMore: () => Promise<unknown>;
+  loadingMore: boolean;
+  refresh: () => Promise<unknown>;
+  ready: boolean;
 }) {
-  const published = useReviews((state) => state.byTitle[id] ?? emptyReviews);
-  const saveReview = useReviews((state) => state.publish);
-  const reviews = [...published, ...(filmReviews[id] ?? emptyReviews)];
+  const headers = { "X-Filmets-Account": account };
+  const save = useMutation({
+    mutationFn: (form: { title: string; text: string; spoiler: boolean }) =>
+      http.post("api/titles/" + id + "/comments", form, { headers }),
+    onSuccess: refresh,
+  });
+  const react = useMutation({
+    mutationFn: ({ id, kind }: { id: number; kind: ReviewRow["reaction"] }) =>
+      http.patch("api/reviews/" + id + "/reaction", { kind }, { headers }),
+    onSuccess: refresh,
+  });
   const [error, setError] = useState("");
   const [visibleCount, setVisibleCount] = useState(2);
 
@@ -85,17 +85,8 @@ export function TitleReviews({
       setError("Заполните заголовок и текст рецензии.");
       return;
     }
-    const review = {
-      author: account,
-      rating,
-      title,
-      body,
-      spoiler: data.get("spoiler") === "on",
-      likes: 0,
-    };
-    saveReview(id, review);
-    event.currentTarget.reset();
     setError("");
+    save.mutate({ title, text: body, spoiler: data.get("spoiler") === "on" });
   }
 
   return (
@@ -104,6 +95,7 @@ export function TitleReviews({
         <Stack gap="xl">
           {ratingPanel}
           <Stack
+            key={own?.id ?? "new"}
             gap="md"
             className={classes.reviewForm}
             renderRoot={(props) => (
@@ -112,6 +104,7 @@ export function TitleReviews({
           >
             <Title order={3}>Моя рецензия</Title>
             <TextInput
+              defaultValue={own?.title ?? ""}
               name="title"
               label="Заголовок"
               placeholder="Как бы вы назвали свою рецензию?"
@@ -119,10 +112,11 @@ export function TitleReviews({
               required
             />
             <Textarea
+              defaultValue={own?.body ?? ""}
               name="body"
               label="Текст рецензии"
               placeholder={
-                id === "severance"
+                series
                   ? "Что вам запомнилось в сериале?"
                   : "Что вам запомнилось в фильме?"
               }
@@ -131,10 +125,19 @@ export function TitleReviews({
               required
             />
             <Group justify="space-between">
-              <Checkbox name="spoiler" label="Есть спойлеры" />
+              <Checkbox
+                defaultChecked={own?.spoiler}
+                name="spoiler"
+                label="Есть спойлеры"
+              />
               {account ? (
-                <ActionButton type="submit" w={208}>
-                  Опубликовать
+                <ActionButton
+                  type="submit"
+                  disabled={!ready}
+                  loading={save.isPending}
+                  w={208}
+                >
+                  {own ? "Сохранить изменения" : "Опубликовать"}
                 </ActionButton>
               ) : (
                 <Text
@@ -146,25 +149,37 @@ export function TitleReviews({
                 </Text>
               )}
             </Group>
-            {error && (
+            {(error || save.isError || react.isError) && (
               <Text role="alert" c="var(--kino-dropped)">
-                {error}
+                {error || requestError(save.error ?? react.error)}
               </Text>
             )}
           </Stack>
         </Stack>
       </Paper>
-      {reviews.slice(0, visibleCount).map((review, index) => (
+      {reviews.slice(0, visibleCount).map((review) => (
         <ReviewCard
-          key={`${review.author}-${review.title}-${reviews.length - index}`}
-          review={review}
+          key={review.id}
+          review={{
+            ...review,
+            author: review.nickname,
+            title: review.title ?? "",
+          }}
+          reaction={review.reaction}
+          disabled={!account || react.isPending}
+          onReact={(kind) => react.mutate({ id: review.id, kind })}
         />
       ))}
-      {reviews.length > visibleCount && (
+      {total > visibleCount && (
         <Button
           variant="default"
           mx="auto"
-          onClick={() => setVisibleCount((count) => count + 2)}
+          loading={loadingMore}
+          onClick={async () => {
+            if (visibleCount + 2 > reviews.length && reviews.length < total)
+              await loadMore();
+            setVisibleCount((count) => count + 2);
+          }}
         >
           Посмотреть ещё
         </Button>

@@ -13,17 +13,11 @@ import { IconCheck, IconPlus, IconSearch, IconX } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import { formatFilmCount } from "../../../entities/collection";
-import {
-  TitleCard,
-  titlesQuery,
-  type FilmTitle,
-} from "../../../entities/title";
+import { TitleCard, type FilmTitle } from "../../../entities/title";
 import { ActionButton, EmptyState } from "../../../shared/ui";
+import { catalogQuery, filmCard } from "../../../entities/title/api/catalog";
+import { useDebouncedValue } from "@mantine/hooks";
 import classes from "./CreateCollectionPage.module.css";
-
-function normalize(text: string) {
-  return text.toLocaleLowerCase("ru").replaceAll("ё", "е").trim();
-}
 
 export function CollectionFilmSearch({
   selected,
@@ -34,28 +28,21 @@ export function CollectionFilmSearch({
 }) {
   const [search, setSearch] = useState("");
   const input = useRef<HTMLInputElement>(null);
-  const query = useQuery(titlesQuery);
-  const words = normalize(search).split(/\s+/);
-  const results = (query.data ?? []).filter((film) => {
-    if (film.kind !== "Фильм") return false;
-    const searchable = normalize(
-      [film.name, film.director, film.genre, film.year].join(" "),
-    );
-    return words.every((word) => searchable.includes(word));
-  });
-
+  const [debounced] = useDebouncedValue(search.trim(), 200);
+  const query = useQuery(catalogQuery({ q: debounced, limit: 18 }));
+  const results = query.data?.items.map(filmCard) ?? [];
   return (
     <Stack gap="md">
       <Title order={2} fz={24} lh={1.45}>
         Найти фильмы
       </Title>
       <Text c="dimmed" fz={14} lh={1.45}>
-        Ищи по названию, режиссёру или жанру.
+        Ищи фильмы и сериалы по русскому или оригинальному названию.
       </Text>
       <TextInput
         ref={input}
         aria-label="Поиск фильмов"
-        placeholder="Название, режиссёр или жанр"
+        placeholder="Название фильма или сериала"
         classNames={{ input: classes.field }}
         leftSection={<IconSearch size={24} aria-hidden />}
         leftSectionWidth={56}
@@ -89,7 +76,7 @@ export function CollectionFilmSearch({
         </Text>
         {query.data && (
           <Text fz={14} c="dimmed" lh={1.45} aria-live="polite">
-            {formatFilmCount(results.length)}
+            {formatFilmCount(query.data.total)}
           </Text>
         )}
       </Group>
@@ -116,7 +103,7 @@ export function CollectionFilmSearch({
               <ActionButton
                 appearance="secondary"
                 fullWidth
-                disabled={added}
+                disabled={added || selected.length >= 100}
                 c={added ? "var(--kino-collectionSelected)" : undefined}
                 className={classes.addFilm}
                 leftSection={

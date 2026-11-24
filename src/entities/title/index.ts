@@ -2,7 +2,12 @@ export type { FilmTitle, ShelfStatus, TitleKind } from "./model/title";
 export { StatusBadge, statusLabels } from "./ui/StatusBadge";
 export { TitleCard, type PersonalRating } from "./ui/TitleCard";
 export { titlesQuery } from "./api/titleQueries";
-export { emptyShelf, useShelf, type ShelfEntry } from "./model/shelf";
+export {
+  excludedTitles,
+  emptyShelf,
+  useShelf,
+  type ShelfEntry,
+} from "./model/shelf";
 export {
   recentTitleViewer,
   useRecentTitle,
