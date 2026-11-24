@@ -10,34 +10,38 @@ import {
   Title,
 } from "@mantine/core";
 import { IconStar, IconStarFilled } from "@tabler/icons-react";
-import type { FilmTitle } from "../../../entities/title";
-import type { EpisodeDetails } from "../model/titleDetails";
+import type { Detail } from "../../../entities/title/api/catalog";
 import { EpisodeRatings } from "./EpisodeRatings";
-import { TitleReviews } from "./TitleReviews";
 import classes from "./FilmPage.module.css";
 
-const distribution = [32, 29, 20, 10, 4, 2, 1, 1, 0.5, 0.5];
-
+export interface ViewerScore {
+  votes: number;
+  average: number | null;
+  histogram: Record<string, number> | null;
+}
 export function TitleRatings({
-  title,
-  episode,
+  id,
   account,
+  seasons,
+  score,
   rating,
+  pending,
   onRate,
 }: {
-  title: FilmTitle;
-  episode?: EpisodeDetails;
+  id?: string;
   account?: string;
-  rating?: number;
-  onRate: (rating: number) => void;
+  seasons?: Detail["seasons"];
+  score?: ViewerScore;
+  rating?: number | null;
+  pending: boolean;
+  onRate?: (rating: number | null) => void;
 }) {
-  const isFilm = title.kind === "Фильм";
-  const isSeverance = title.id === "severance";
-  const viewerDistribution = isFilm
-    ? title.ratingDistribution
-    : isSeverance
-      ? distribution
-      : undefined;
+  const series = !!seasons?.length;
+  const viewerDistribution = Array.from({ length: 10 }, (_, i) =>
+    score?.votes
+      ? Math.round((1000 * (score.histogram?.[10 - i] ?? 0)) / score.votes) / 10
+      : 0,
+  );
   const ratingPanel = (
     <Stack gap="xl">
       <Group justify="space-between" align="center">
@@ -56,10 +60,11 @@ export function TitleRatings({
             count={10}
             value={rating ?? 0}
             color="coral"
-            onChange={(rating) => onRate(rating)}
+            readOnly={!onRate || pending}
+            onChange={(rating) => onRate?.(rating || null)}
             getSymbolLabel={(number) => `Оценка ${number} из 10`}
           />
-          {episode ? (
+          {!id ? (
             <Text
               aria-live="polite"
               c={rating ? "var(--kino-accent)" : "dimmed"}
@@ -73,25 +78,29 @@ export function TitleRatings({
           ) : (
             <Button
               variant="light"
-              disabled={!rating}
-              onClick={() => onRate(0)}
+              disabled={!rating || pending || !onRate}
+              onClick={() => onRate?.(null)}
               aria-label="Удалить оценку"
             >
-              −
+              {rating ?? "—"}
             </Button>
           )}
         </Group>
       </Group>
-      {(isFilm || isSeverance) && (
+      {
         <Box
           className={classes.distribution}
-          data-series={isSeverance && !episode}
-          data-film={isFilm}
+          data-series={series}
+          data-film={!series}
         >
-          {isSeverance && !episode && <EpisodeRatings account={account} />}
+          {series && id && (
+            <EpisodeRatings id={id} seasons={seasons!} account={account} />
+          )}
           <Stack
             gap="lg"
-            className={isFilm ? classes.filmViewerScores : classes.viewerScores}
+            className={
+              !series ? classes.filmViewerScores : classes.viewerScores
+            }
           >
             <Stack gap="xs">
               <Title order={3} fz={22}>
@@ -99,35 +108,18 @@ export function TitleRatings({
               </Title>
               <Group align="baseline" gap="xs">
                 <Text fz={64} fw={700} lh={1}>
-                  {episode?.score ?? title.rating}
+                  {score?.average?.toFixed(1) ?? "—"}
                 </Text>
                 <Text c="dimmed" fz={16}>
                   из 10
                 </Text>
               </Group>
               <Text c="dimmed" fz={15}>
-                Рейтинг Кинополки
+                {score ? `Голосов: ${score.votes}` : "Загрузка оценок…"}
               </Text>
-              {isFilm && title.sourceRatings && (
-                <Group gap="lg" mt="xs">
-                  {[
-                    ["IMDb", title.sourceRatings.imdb],
-                    ["Кинопоиск", title.sourceRatings.kinopoisk],
-                  ].map(([name, score]) => (
-                    <Stack key={name} gap={2}>
-                      <Text fz={24} fw={600} lh={1.2}>
-                        {score}
-                      </Text>
-                      <Text fz={13} c="dimmed">
-                        {name}
-                      </Text>
-                    </Stack>
-                  ))}
-                </Group>
-              )}
             </Stack>
             {viewerDistribution && (
-              <Stack gap={isFilm ? 2 : "sm"}>
+              <Stack gap={!series ? 2 : "sm"}>
                 {viewerDistribution.map((fraction, index) => (
                   <Group key={index} gap="md" wrap="nowrap">
                     <Text w={20} ta="right" c="dimmed" fz={13}>
@@ -150,24 +142,14 @@ export function TitleRatings({
             )}
           </Stack>
         </Box>
-      )}
+      }
     </Stack>
   );
-  return (
-    <Stack component="section" id="ratings">
-      {!episode && <Title order={2}>Оценки и рецензии</Title>}
-      {episode ? (
-        <Paper className={classes.panel} p="lg">
-          {ratingPanel}
-        </Paper>
-      ) : (
-        <TitleReviews
-          id={title.id}
-          account={account}
-          rating={rating}
-          ratingPanel={ratingPanel}
-        />
-      )}
-    </Stack>
+  return id ? (
+    ratingPanel
+  ) : (
+    <Paper className={classes.panel} p="lg">
+      {ratingPanel}
+    </Paper>
   );
 }

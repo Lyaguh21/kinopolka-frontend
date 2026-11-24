@@ -1,7 +1,8 @@
-import { Flex } from "@mantine/core";
+import { Alert, Button, Flex, Loader } from "@mantine/core";
 import { useHotkeys } from "@mantine/hooks";
 import { useEffect, useState } from "react";
 import { Outlet, Route, Routes, useLocation } from "react-router";
+import { useShelf } from "../entities/title";
 import { useSession } from "../entities/session";
 import { TitleSearch } from "../features/title-search";
 import { AuthPage, AuthRequiredPage } from "../pages/auth";
@@ -17,8 +18,10 @@ import {
 import { EditProfilePage, ProfilePage, ShelfPage } from "../pages/profile";
 import { FriendsPage } from "../pages/friends";
 import { InfoPage } from "../pages/info";
+import { CatalogPerson } from "../pages/people/CatalogPerson";
 import { DirectorPage } from "../pages/people";
 import { NotFoundView, SiteFooter } from "../shared/ui";
+import { AdminPage } from "../pages/admin/AdminPage";
 import { AppLayout } from "./ui/AppLayout";
 
 function StandaloneLayout() {
@@ -36,6 +39,13 @@ export function App() {
   const [searchOpen, setSearchOpen] = useState(false);
   const account = useSession((state) => state.account);
   const { pathname, hash } = useLocation();
+  const ready = useSession((s) => s.ready),
+    error = useSession((s) => s.error),
+    restore = useSession((s) => s.restore);
+  const shelfError = useShelf((s) => s.error);
+  useEffect(() => {
+    void restore();
+  }, [restore]);
   const openSearch = () => setSearchOpen(true);
 
   useHotkeys([["mod+K", openSearch]]);
@@ -43,8 +53,22 @@ export function App() {
     if (!hash) window.scrollTo(0, 0);
   }, [pathname, hash]);
 
+  if (!ready) return <Loader aria-label="Загрузка профиля" />;
   return (
     <>
+      {error && (
+        <Alert title={error}>
+          <Button onClick={() => restore()}>Повторить</Button>
+        </Alert>
+      )}
+      {shelfError && (
+        <Alert
+          withCloseButton
+          onClose={() => useShelf.setState({ error: undefined })}
+        >
+          {shelfError}
+        </Alert>
+      )}
       <Routes>
         <Route element={<StandaloneLayout />}>
           <Route path="/ui-kit" element={<UiKitPage onSearch={openSearch} />} />
@@ -56,11 +80,16 @@ export function App() {
         </Route>
         <Route element={<AppLayout onSearch={openSearch} />}>
           <Route index element={<HomePage account={account} />} />
+          <Route path="/admin" element={<AdminPage key={account} />} />
           <Route path="/catalog" element={<CatalogPage />} />
           <Route path="/title/:id" element={<FilmPage key={pathname} />} />
           <Route
             path="/title/:id/episodes/:episode"
             element={<FilmPage key={pathname} />}
+          />
+          <Route
+            path="/people/:id"
+            element={<CatalogPerson key={pathname} />}
           />
           <Route path="/people/christopher-nolan" element={<DirectorPage />} />
           <Route path="/login-required" element={<AuthRequiredPage />} />
@@ -74,16 +103,13 @@ export function App() {
             path="/profile/history"
             element={<ShelfPage key="history" history />}
           />
-          <Route path="/profiles/anna" element={<ProfilePage other />} />
-          <Route path="/profiles/alex" element={<ProfilePage alex />} />
-          <Route path="/profiles/:personId/friends" element={<FriendsPage />} />
           <Route
-            path="/profiles/anna/shelf"
-            element={<ShelfPage key="anna-shelf" other />}
+            path="/profiles/:personId"
+            element={<FriendsPage key={pathname} profile />}
           />
           <Route
-            path="/profiles/anna/history"
-            element={<ShelfPage key="anna-history" other history />}
+            path="/profiles/:personId/friends"
+            element={<FriendsPage key={pathname} />}
           />
           <Route path="/shelf" element={<ShelfPage />} />
           <Route
@@ -100,7 +126,7 @@ export function App() {
             element={
               <InfoPage
                 title="Конфиденциальность"
-                description="Данные демонстрационной полки хранятся в этом браузере."
+                description="Учётная запись, оценки и комментарии хранятся в базе Кинополки. Комментарии видны другим зрителям. Текст обращений к КиноГиду обрабатывает OpenRouter."
               />
             }
           />

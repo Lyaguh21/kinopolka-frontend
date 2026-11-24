@@ -15,15 +15,6 @@ import { useId, useState } from "react";
 import { ActionButton } from "../../../shared/ui";
 import classes from "./CatalogPage.module.css";
 
-const genres = [
-  "Фантастика",
-  "Драма",
-  "Комедия",
-  "Триллер",
-  "Приключения",
-  "Анимация",
-  "Фэнтези",
-];
 const years = Array.from({ length: 57 }, (_, index) => String(2026 - index));
 const countries = ["США", "Великобритания", "Япония", "Канада", "Германия"];
 export const initial = {
@@ -37,9 +28,11 @@ export const initial = {
 type Filters = typeof initial;
 
 export function CatalogFilters({
+  genres,
   apply,
   onReset,
 }: {
+  genres: string[];
   apply: (filters: Filters) => void;
   onReset: () => void;
 }) {

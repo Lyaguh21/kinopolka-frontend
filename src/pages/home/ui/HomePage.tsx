@@ -17,37 +17,37 @@ import { Link, useNavigate } from "react-router";
 import {
   recentTitleViewer,
   TitleCard,
-  titlesQuery,
   useRecentTitle,
   useShelf,
   useTitleFromPreviousLaunch,
-  type FilmTitle,
 } from "../../../entities/title";
 import { ActionButton, EmptyState } from "../../../shared/ui";
 import { FeaturedHero } from "./FeaturedHero";
-import { NextEpisodePrompt } from "./NextEpisodePrompt";
+import {
+  catalogQuery,
+  viewerRecommendations,
+  filmCard,
+  shelfCardsQuery,
+} from "../../../entities/title/api/catalog";
 import classes from "./HomePage.module.css";
-
-const sections = [
-  {
-    title: "Лучшие фильмы",
-    ids: ["dune", "severance", "blade-runner", "spirited-away", "arrival"],
-  },
-  {
-    title: "Сейчас популярно",
-    ids: [
-      "interstellar",
-      "inception",
-      "grand-budapest",
-      "arrival",
-      "spirited-away",
-    ],
-  },
-];
 
 export function HomePage({ account }: { account?: string }) {
   const navigate = useNavigate();
-  const titles = useQuery(titlesQuery);
+  const popular = useQuery(catalogQuery({ sort: "popular", limit: 5 }));
+  const best = useQuery(
+    catalogQuery({ type: "movie", sort: "rating", limit: 5 }),
+  );
+  const shelf = useShelf((s) => s.shelves[account ?? ""]);
+  const personal = useQuery(
+    viewerRecommendations(account ?? "", JSON.stringify(shelf ?? {})),
+  );
+  const sections = [
+    ...(account && personal.data?.items.length
+      ? [{ title: "По твоей полке", query: personal }]
+      : []),
+    { title: "Лучшие фильмы", query: best },
+    { title: "Сейчас популярно", query: popular },
+  ];
   const [showInvite, setShowInvite] = useState(true);
   const reducedMotion = useReducedMotion();
   const viewer = recentTitleViewer(account);
@@ -56,16 +56,16 @@ export function HomePage({ account }: { account?: string }) {
   const alreadyRated = useShelf((state) =>
     Boolean(account && recentId && state.shelves[account]?.[recentId]?.rating),
   );
-  const recent = alreadyRated
-    ? undefined
-    : titles.data?.find(({ id }) => id === recentId);
+  const titles = useQuery(shelfCardsQuery(recentId ? [recentId] : []));
+  const recent = alreadyRated ? undefined : titles.data?.[0];
   const showGuestInvite =
     !account && showInvite && !recent && (!recentId || !titles.isPending);
 
   return (
     <Stack component="main" gap="xl" className={classes.main}>
-      <FeaturedHero />
-      <NextEpisodePrompt viewer={viewer} titles={titles.data} />
+      {popular.data?.items[0] && (
+        <FeaturedHero id={String(popular.data.items[0].id)} />
+      )}
       {(recent || showGuestInvite) && (
         <Group
           component="section"
@@ -115,17 +115,9 @@ export function HomePage({ account }: { account?: string }) {
           </Group>
         </Group>
       )}
-      {titles.isError && (
-        <Alert title="Не удалось загрузить фильмы">
-          <UnstyledButton onClick={() => void titles.refetch()}>
-            Повторить загрузку
-          </UnstyledButton>
-        </Alert>
-      )}
       {sections.map((section) => {
-        const visible = section.ids
-          .map((id) => titles.data?.find((title) => title.id === id))
-          .filter((title): title is FilmTitle => Boolean(title));
+        const titles = section.query;
+        const visible = titles.data?.items.map(filmCard) ?? [];
 
         return (
           <Stack component="section" gap="lg" key={section.title}>
@@ -133,15 +125,24 @@ export function HomePage({ account }: { account?: string }) {
               <Title order={2} fz={28}>
                 {section.title}
               </Title>
-              <Group
-                renderRoot={(props) => <Link {...props} to="/catalog" />}
-                gap={5}
-                c="var(--kino-accent)"
-                fz={14}
-              >
-                Смотреть всё <IconArrowRight size={15} />
-              </Group>
+              {section.query !== personal && (
+                <Group
+                  renderRoot={(props) => <Link {...props} to="/catalog" />}
+                  gap={5}
+                  c="var(--kino-accent)"
+                  fz={14}
+                >
+                  Смотреть всё <IconArrowRight size={15} />
+                </Group>
+              )}
             </Group>
+            {titles.isError && (
+              <Alert title="Не удалось загрузить подборку">
+                <UnstyledButton onClick={() => titles.refetch()}>
+                  Повторить
+                </UnstyledButton>
+              </Alert>
+            )}
             {titles.isPending && <Skeleton height={326} radius="lg" />}
             {titles.isSuccess && !visible.length && (
               <EmptyState

@@ -1,114 +1,196 @@
 import {
-  ActionIcon,
   Anchor,
-  Breadcrumbs,
-  Group,
   Avatar,
+  Button,
+  Group,
   Paper,
   Stack,
   Text,
   Title,
+  TextInput,
 } from "@mantine/core";
-import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
-import { Link, useParams } from "react-router";
-import {
-  getFriends,
-  isPublicProfileId,
-  publicProfiles,
-} from "../../../entities/person";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Link, useParams, useNavigate } from "react-router";
+import { useState } from "react";
+import { isAxiosError } from "axios";
 import { useSession } from "../../../entities/session";
-import { EmptyState, NotFoundView, PageBody } from "../../../shared/ui";
-import classes from "./FriendsPage.module.css";
-
-export function FriendsPage() {
-  const { personId } = useParams();
-  const account = useSession((state) => state.account);
-
-  if (personId !== undefined && !isPublicProfileId(personId))
-    return <NotFoundView />;
-  if (!personId && !account) {
+import { http } from "../../../shared/api/http";
+import { PageBody, NotFoundView } from "../../../shared/ui";
+type User = { nickname: string };
+interface Profile extends User {
+  name: string | null;
+  bio: string | null;
+  avatar: string | null;
+  friends: User[];
+  incoming: User[];
+  sent: boolean;
+  received: boolean;
+  comments: { id: number; body: string; titleId: number; title: string }[];
+}
+export function useCommunityProfile(name?: string) {
+  const viewer = useSession((s) => s.account);
+  return useQuery({
+    queryKey: ["public-profile", name, viewer ?? null],
+    enabled: !!name,
+    retry: false,
+    queryFn: async ({ signal }) =>
+      (
+        await http.get<Profile>("api/profiles/" + encodeURIComponent(name!), {
+          signal,
+        })
+      ).data,
+  });
+}
+export function FriendsPage({ profile = false }: { profile?: boolean }) {
+  const { personId } = useParams(),
+    account = useSession((s) => s.account),
+    name = personId ?? account;
+  const query = useCommunityProfile(name),
+    client = useQueryClient(),
+    navigate = useNavigate();
+  const [search, setSearch] = useState("");
+  const relation = useMutation({
+    mutationFn: ({ nickname, add }: { nickname: string; add: boolean }) =>
+      http.post(
+        "api/profiles/" + encodeURIComponent(nickname) + "/friend",
+        { add },
+        { headers: { "X-Filmets-Account": account } },
+      ),
+    onSuccess: () => client.invalidateQueries({ queryKey: ["public-profile"] }),
+  });
+  if (!name)
     return (
       <PageBody>
-        <Title order={1} fz={40} fw={700}>
-          Друзья
-        </Title>
-        <Text c="dimmed">Войди, чтобы увидеть свой список друзей.</Text>
-        <Anchor
-          component={Link}
-          to="/login"
-          state={{ returnTo: "/profile/friends" }}
-        >
+        <Title>Друзья</Title>
+        <Anchor component={Link} to="/login">
           Войти в Кинополку
         </Anchor>
       </PageBody>
     );
-  }
-
-  const owner = personId ? publicProfiles[personId] : undefined;
-  const profilePath = owner ? `/profiles/${owner.id}` : "/profile";
-  const friends = getFriends(owner?.id);
-
+  if (query.isError)
+    return isAxiosError(query.error) && query.error.response?.status === 404 ? (
+      <NotFoundView />
+    ) : (
+      <PageBody>
+        <Button onClick={() => query.refetch()}>
+          Повторить загрузку профиля
+        </Button>
+      </PageBody>
+    );
+  if (!query.data)
+    return (
+      <PageBody>
+        <Text>Загрузка профиля…</Text>
+      </PageBody>
+    );
+  const data = query.data;
   return (
     <PageBody>
-      <Group gap="md">
-        <ActionIcon
-          component={Link}
-          to={profilePath}
-          variant="default"
-          size={40}
-          aria-label="Вернуться в профиль"
-        >
-          <IconChevronLeft size={22} aria-hidden />
-        </ActionIcon>
-        <Breadcrumbs>
-          <Anchor component={Link} to={profilePath} c="dimmed">
-            {owner?.name ?? "Профиль"}
-          </Anchor>
-          <Text fz={15}>Друзья</Text>
-        </Breadcrumbs>
-      </Group>
-
-      <Title order={1} fz={40} fw={700}>
-        Друзья
+      {profile && data.avatar && <Avatar src={data.avatar} size={80} />}
+      <Title>
+        {profile
+          ? (data.name ?? "@" + name)
+          : personId
+            ? "Друзья @" + name
+            : "Мои друзья"}
       </Title>
-
-      {friends.length ? (
-        <Stack
-          component="ul"
-          className={classes.list}
-          gap="sm"
-          maw={644}
-          aria-label="Список друзей"
+      {profile && data.name && <Text c="dimmed">@{name}</Text>}
+      {profile && data.bio && <Text>{data.bio}</Text>}
+      {profile && account && account !== name && (
+        <Group>
+          <Button
+            disabled={relation.isPending}
+            onClick={() => relation.mutate({ nickname: name, add: !data.sent })}
+          >
+            {data.sent
+              ? data.received
+                ? "Удалить из друзей"
+                : "Отозвать заявку"
+              : data.received
+                ? "Принять заявку"
+                : "Добавить в друзья"}
+          </Button>
+        </Group>
+      )}
+      {name === account && (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (search.trim())
+              navigate("/profiles/" + encodeURIComponent(search.trim()));
+          }}
         >
-          {friends.map((friend) => (
-            <li key={friend.id}>
-              <Paper
-                component={Link}
-                to={`/profiles/${friend.id}`}
-                className={classes.friend}
+          <Group align="end">
+            <TextInput
+              label="Ник зрителя"
+              value={search}
+              onChange={(e) => setSearch(e.currentTarget.value)}
+            />
+            <Button type="submit" disabled={!search.trim()}>
+              Открыть профиль
+            </Button>
+          </Group>
+        </form>
+      )}
+      {relation.isError && (
+        <Text c="red">Не удалось изменить список друзей.</Text>
+      )}
+      {data.incoming.length > 0 && (
+        <Stack>
+          <Title order={2}>Входящие заявки</Title>
+          {data.incoming.map((u) => (
+            <Group key={u.nickname}>
+              <Anchor component={Link} to={"/profiles/" + u.nickname}>
+                @{u.nickname}
+              </Anchor>
+              <Button
+                disabled={relation.isPending}
+                onClick={() =>
+                  relation.mutate({ nickname: u.nickname, add: true })
+                }
               >
-                <Group gap="md" wrap="nowrap">
-                  <Avatar src={friend.avatar} alt="" size={56} radius="xl" />
-                  <Stack gap={2} flex={1}>
-                    <Text fz={18} fw={600}>
-                      {friend.name}
-                    </Text>
-                    <Text fz={14} c="dimmed">
-                      @{friend.handle}
-                    </Text>
-                  </Stack>
-                  <IconChevronRight
-                    className={classes.chevron}
-                    size={20}
-                    aria-hidden
-                  />
-                </Group>
-              </Paper>
-            </li>
+                Принять
+              </Button>
+            </Group>
           ))}
         </Stack>
-      ) : (
-        <EmptyState message="Здесь пока нет друзей." />
+      )}
+      <Stack>
+        {profile && <Title order={2}>Друзья</Title>}
+        {data.friends.length ? (
+          data.friends.map((u) => (
+            <Anchor
+              key={u.nickname}
+              component={Link}
+              to={"/profiles/" + u.nickname}
+            >
+              @{u.nickname}
+            </Anchor>
+          ))
+        ) : (
+          <Text c="dimmed">Список друзей пока пуст.</Text>
+        )}
+      </Stack>
+      {profile && (
+        <Stack>
+          <Title order={2}>Последние комментарии</Title>
+          {data.comments.length ? (
+            data.comments.map((c) => (
+              <Paper key={c.id} withBorder p="md">
+                <Anchor component={Link} to={"/title/" + c.titleId}>
+                  {c.title}
+                </Anchor>
+                <Text
+                  style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}
+                >
+                  {c.body}
+                </Text>
+              </Paper>
+            ))
+          ) : (
+            <Text c="dimmed">Комментариев пока нет.</Text>
+          )}
+        </Stack>
       )}
     </PageBody>
   );

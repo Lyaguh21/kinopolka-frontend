@@ -1,9 +1,10 @@
-import { create } from "zustand";
-import { persist } from "zustand/middleware";
-import { editorialAndDemoCollections } from "./demoCollections";
-
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import { http } from "../../../shared/api/http";
+import { useSession } from "../../session";
 export interface Collection {
   id: string;
+  saved?: boolean;
+  local?: boolean;
   name: string;
   description?: string;
   titles: string[];
@@ -18,11 +19,6 @@ export interface Collection {
 
 type NewCollection = Omit<Collection, "id" | "count" | "initialSaves">;
 
-interface CollectionsState {
-  created: Collection[];
-  add: (draft: NewCollection) => string;
-}
-
 const filmPlural = new Intl.PluralRules("ru");
 const filmNoun = { one: "фильм", few: "фильма", many: "фильмов" };
 
@@ -35,42 +31,76 @@ export function formatFilmCount(count: number) {
   return count + " " + noun;
 }
 
-const useCollectionsState = create<CollectionsState>()(
-  persist(
-    (set) => ({
-      created: [],
-      add: (draft) => {
-        const random = crypto.getRandomValues(new Uint32Array(4));
-        const id =
-          "collection-" +
-          Array.from(random, (part) => part.toString(16).padStart(8, "0")).join(
-            "",
-          );
-        const collection = {
-          ...draft,
-          id,
-          initialSaves: 0,
-          count: formatFilmCount(draft.titles.length),
-        };
-        set(({ created }) => ({ created: [collection, ...created] }));
-        return id;
-      },
-    }),
-    { name: "kinopolka-created-collections" },
-  ),
-);
-
+export function useCollectionData() {
+  const account = useSession((s) => s.account);
+  return useQuery({
+    queryKey: ["collections", account ?? null],
+    queryFn: async ({ signal }) =>
+      (await http.get<Collection[]>("api/collections", { signal })).data,
+  });
+}
+function localDrafts(account?: string): Collection[] {
+  if (!account) return [];
+  try {
+    const items = JSON.parse(
+      localStorage.getItem("kinopolka-created-collections") ?? "null",
+    )?.state?.created;
+    return Array.isArray(items)
+      ? items
+          .filter((c) => c?.owner === account && Array.isArray(c.titles))
+          .map((c) => ({ ...c, local: true }))
+      : [];
+  } catch {
+    return [];
+  }
+}
+export function useCollectionBookmark(account?: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (c: Collection) =>
+      http.patch(
+        "api/collections/" + c.id + "/bookmark",
+        { saved: !c.saved },
+        { headers: { "X-Filmets-Account": account } },
+      ),
+    onSuccess: () => client.invalidateQueries({ queryKey: ["collections"] }),
+  });
+}
 export function useCollections() {
-  const created = useCollectionsState((state) => state.created);
-  return [...created, ...editorialAndDemoCollections];
+  const account = useSession((s) => s.account);
+  const records = useCollectionData();
+  const rows = records.data ?? [];
+  return {
+    items: [
+      ...rows.map((c) => ({ ...c, count: formatFilmCount(c.titles.length) })),
+      ...localDrafts(account),
+    ],
+    pending: records.isPending,
+    error: records.isError,
+  };
 }
 
 export function useCreateCollection() {
-  return useCollectionsState((state) => state.add);
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (draft: NewCollection) =>
+      (
+        await http.post<{ id: string }>(
+          "api/collections",
+          {
+            name: draft.name,
+            description: draft.description,
+            titles: draft.titles,
+          },
+          { headers: { "X-Filmets-Account": draft.owner } },
+        )
+      ).data.id,
+    onSuccess: () => client.invalidateQueries({ queryKey: ["collections"] }),
+  });
 }
 
 export function collectionAuthorPath(collection: Collection, account?: string) {
   if (collection.authorId) return "/profiles/" + collection.authorId;
   if (collection.owner && collection.owner === account) return "/profile";
-  return undefined;
+  return collection.owner ? "/profiles/" + collection.owner : undefined;
 }

@@ -20,10 +20,11 @@ import {
   IconPlayerPlay,
   IconX,
 } from "@tabler/icons-react";
+import { shelfCardsQuery } from "../../../entities/title/api/catalog";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useSearchParams } from "react-router";
 import { useSession } from "../../../entities/session";
-import { emptyShelf, titlesQuery, useShelf } from "../../../entities/title";
+import { emptyShelf, useShelf } from "../../../entities/title";
 import { EmptyState, PageBody } from "../../../shared/ui";
 import { annaShelf } from "../model/anna";
 import {
@@ -53,12 +54,16 @@ export function ShelfPage({
   other?: boolean;
 }) {
   const [params, setParams] = useSearchParams();
-  const query = useQuery(titlesQuery);
+
   const account = useSession((state) => state.account);
   const personal = useShelf(
     (state) => state.shelves[account ?? ""] ?? emptyShelf,
   );
   const shelf = other ? annaShelf : personal;
+  const numericIds = Object.keys(shelf)
+    .filter((id) => /^[1-9]\d*$/.test(id))
+    .sort();
+  const live = useQuery(shelfCardsQuery(numericIds));
   if (!account && !other)
     return (
       <RequireAccount title={history ? "История просмотра" : "Моя полка"} />
@@ -74,13 +79,15 @@ export function ShelfPage({
     : other
       ? "Полка Анны К."
       : "Моя полка";
-  const visible = (query.data ?? []).filter(({ id }) => {
-    const entry = shelf[id];
-    if (filter === "all")
-      return Boolean(entry?.status || entry?.favorite || entry?.rating);
-    if (filter === "favorite") return entry?.favorite;
-    return entry?.status === filter;
-  });
+  const visible = [...(live.data ?? [])].filter(
+    ({ id }) => {
+      const entry = shelf[id];
+      if (filter === "all")
+        return Boolean(entry?.status || entry?.favorite || entry?.rating);
+      if (filter === "favorite") return entry?.favorite;
+      return entry?.status === filter;
+    },
+  );
 
   return (
     <PageBody>
@@ -150,17 +157,21 @@ export function ShelfPage({
           />
         </ScrollArea>
       )}
-      {query.isSuccess && !visible.length && (
-        <EmptyState
-          message={profileEmptyMessage}
-          imageSize={profileEmptyImageSize}
-          illustration={history ? historyIllustration : undefined}
-          action={
-            <Anchor component={Link} to="/catalog">
-              Открыть каталог
-            </Anchor>
-          }
-        />
+      {(numericIds.length === 0 || live.isSuccess) &&
+        !visible.length && (
+          <EmptyState
+            message={profileEmptyMessage}
+            imageSize={profileEmptyImageSize}
+            illustration={history ? historyIllustration : undefined}
+            action={
+              <Anchor component={Link} to="/catalog">
+                Открыть каталог
+              </Anchor>
+            }
+          />
+        )}
+      {live.isError && (
+        <Text c="dimmed">Не удалось загрузить фильмы полки.</Text>
       )}
       <ShelfGrid titles={visible} account={account} other={other} />
     </PageBody>

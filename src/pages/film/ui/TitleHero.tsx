@@ -26,12 +26,20 @@ import classes from "./FilmPage.module.css";
 
 export function TitleHero({
   title,
+  live,
   episode,
   entry,
   updateEntry,
   onWatch,
 }: {
   title: FilmTitle;
+  live?: {
+    platformAverage?: number | null;
+    ratings: import("../../../entities/title/api/catalog").Detail["externalRatings"];
+    backdrop: string | null;
+    overview: string | null;
+    metadata: string;
+  };
   episode?: EpisodeDetails;
   entry?: ShelfEntry;
   updateEntry: (change: Partial<ShelfEntry>) => void;
@@ -54,7 +62,13 @@ export function TitleHero({
     >
       {!episode && (
         <Image
-          src={isSeverance ? "/figma/series-backdrop.png" : preview}
+          src={
+            live
+              ? (live.backdrop ?? title.poster)
+              : isSeverance
+                ? "/figma/series-backdrop.png"
+                : preview
+          }
           alt=""
           className={classes.backdrop}
         />
@@ -112,7 +126,7 @@ export function TitleHero({
                   ? "Interstellar · 2014 · США, Великобритания · 12+"
                   : isSeverance
                     ? "Severance · с 2022 · США · 18+"
-                    : title.year}
+                    : live?.metadata || title.year}
             </Text>
             {!episode && (
               <Text c="dimmed">
@@ -123,6 +137,7 @@ export function TitleHero({
                     : `${title.genre} · ${title.kind}`}
               </Text>
             )}
+            {live?.overview && <Text maw={920}>{live.overview}</Text>}
             {isInterstellar && <Text maw={920}>{interstellar.synopsis}</Text>}
             {isSeverance && !episode && (
               <Text maw={920}>{severanceDescription}</Text>
@@ -134,27 +149,64 @@ export function TitleHero({
               </Text>
             )}
             <Group gap={28}>
+              {live && (
+                <Stack gap={0} align="center">
+                  <Text fz={32} fw={700} c="var(--kino-accent)">
+                    {live.platformAverage?.toFixed(1) ?? "—"}
+                  </Text>
+                  <Text fz={13} c="dimmed">
+                    Кинополка
+                  </Text>
+                </Stack>
+              )}
               <Stack gap={0} align="center">
-                <Text fz={32} fw={700} c="var(--kino-accent)">
+                <Text
+                  fz={32}
+                  fw={700}
+                  c={live ? undefined : "var(--kino-accent)"}
+                >
                   {displayTitle.rating}
                 </Text>
                 <Text fz={13} c="dimmed">
-                  Кинополка
+                  {live ? "TMDB" : "Кинополка"}
                 </Text>
               </Stack>
-              {(episode
-                ? [
-                    [
-                      season === 1 && episodeNumber === 1
-                        ? "8.6"
-                        : episode.score,
-                      "Series Graph",
-                    ],
-                  ]
-                : [
-                    [title.sourceRatings?.imdb ?? "—", "IMDb"],
-                    [title.sourceRatings?.kinopoisk ?? "—", "Кинопоиск"],
-                  ]
+              {live?.ratings?.map((r) => (
+                <Stack key={r.source} gap={0} align="center">
+                  <Anchor
+                    href={r.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    c="inherit"
+                    fz={32}
+                    fw={700}
+                    title={
+                      "Источник · " +
+                      new Date(r.updatedAt).toLocaleDateString("ru")
+                    }
+                  >
+                    {r.score.toFixed(1)}
+                  </Anchor>
+                  <Text fz={13} c="dimmed">
+                    {r.source === "kinopoisk" ? "Кинопоиск" : "SeriesGraph"}
+                  </Text>
+                </Stack>
+              ))}
+              {(live
+                ? []
+                : episode
+                  ? [
+                      [
+                        season === 1 && episodeNumber === 1
+                          ? "8.6"
+                          : episode.score,
+                        "Series Graph",
+                      ],
+                    ]
+                  : [
+                      [title.sourceRatings?.imdb ?? "—", "IMDb"],
+                      [title.sourceRatings?.kinopoisk ?? "—", "Кинопоиск"],
+                    ]
               ).map(([score, label]) => (
                 <Stack key={label} gap={0} align="center">
                   <Text fz={32} fw={700}>

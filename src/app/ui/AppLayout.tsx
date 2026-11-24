@@ -9,9 +9,8 @@ export function AppLayout({ onSearch }: { onSearch: () => void }) {
   const signOut = useSession((state) => state.signOut);
   const navigate = useNavigate();
 
-  function leaveAccount() {
-    signOut();
-    navigate("/");
+  async function leaveAccount() {
+    if(await signOut())navigate("/");
   }
 
   return (

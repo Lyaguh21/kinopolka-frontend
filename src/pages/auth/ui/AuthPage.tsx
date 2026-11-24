@@ -10,6 +10,7 @@ import {
 } from "@mantine/core";
 import { useState, type FormEvent } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
+import {requestError} from "../../../entities/session/model/session";
 import { useSession } from "../../../entities/session";
 import { useShelf } from "../../../entities/title";
 import { ActionButton } from "../../../shared/ui";
@@ -25,7 +26,8 @@ export function AuthPage({ registration = false }: { registration?: boolean }) {
   const signIn = useSession((state) => state.signIn);
   const updateShelf = useShelf((state) => state.update);
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  const [busy,setBusy]=useState(false);
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
     const rawAccount = String(data.get("account") ?? "");
@@ -42,7 +44,10 @@ export function AuthPage({ registration = false }: { registration?: boolean }) {
       setError("Пароли не совпадают");
       return;
     }
-    signIn(account);
+    if(busy)return;
+    setBusy(true);
+    try{await signIn(account,String(data.get("password")??""),registration);}
+    catch(e){setError(requestError(e));return}finally{setBusy(false)}
     if (typeof state?.favorite === "string")
       updateShelf(account, state.favorite, { favorite: true });
     const returnTo =
@@ -106,7 +111,7 @@ export function AuthPage({ registration = false }: { registration?: boolean }) {
             classNames={{ input: classes.field, label: classes.label }}
           />
           <PasswordInput
-            name="password"
+            name="password" minLength={registration?8:1} maxLength={256} description={registration?"От 8 символов":undefined}
             label="Пароль"
             placeholder={registration ? "Придумайте пароль" : "Введите пароль"}
             autoComplete={registration ? "new-password" : "current-password"}
@@ -128,7 +133,7 @@ export function AuthPage({ registration = false }: { registration?: boolean }) {
               {error}
             </Text>
           )}
-          <ActionButton type="submit" fullWidth>
+          <ActionButton type="submit" fullWidth loading={busy}>
             {registration ? "Создать аккаунт" : "Войти"}
           </ActionButton>
           {registration && (

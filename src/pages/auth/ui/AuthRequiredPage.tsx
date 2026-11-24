@@ -8,9 +8,9 @@ import {
   Title,
 } from "@mantine/core";
 import { IconHeart, IconSparkles, IconStar, IconX } from "@tabler/icons-react";
-import { useQuery } from "@tanstack/react-query";
+
 import { Link, useNavigate, useSearchParams } from "react-router";
-import { titlesQuery } from "../../../entities/title";
+
 import { ActionButton, PageBody } from "../../../shared/ui";
 
 const benefits = [
@@ -21,19 +21,11 @@ const benefits = [
 
 export function AuthRequiredPage() {
   const [params] = useSearchParams();
-  const query = useQuery(titlesQuery);
-  const navigate = useNavigate();
-  const title = query.data?.find(({ id }) => id === params.get("title"));
-  const from = title ? `/title/${title.id}` : "/catalog";
-  const state = {
-    returnTo: from,
-    favorite: params.get("action") === "favorite" ? title?.id : undefined,
-  };
-  const prompt =
-    title && state.favorite
-      ? `Войди, чтобы добавить «${title.name}» в избранное. Мы сохраним твой выбор и учтём его в рекомендациях.`
-      : "Войди, чтобы сохранять любимые фильмы, ставить оценки и собирать свою полку.";
-
+  const id=params.get("title");
+  const navigate=useNavigate();
+  const from=id&&/^[a-z0-9-]+$/.test(id)?"/title/"+id:"/catalog";
+  const state={returnTo:from,favorite:params.get("action")==="favorite"?id:undefined};
+  const prompt="Войди, чтобы сохранять любимые фильмы, ставить оценки и собирать свою полку.";
   return (
     <PageBody align="center" mih="calc(100svh - 168px)" pt={80}>
       <Paper

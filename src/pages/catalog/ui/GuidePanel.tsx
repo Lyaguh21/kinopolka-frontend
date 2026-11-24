@@ -9,6 +9,7 @@ import {
   Stack,
   Text,
   TextInput,
+  SegmentedControl,
   Title,
 } from "@mantine/core";
 import {
@@ -17,11 +18,28 @@ import {
   IconChevronRight,
   IconTrash,
 } from "@tabler/icons-react";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { useState, type FormEvent } from "react";
+import { useReducedMotion } from "motion/react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router";
 import { ActionButton } from "../../../shared/ui";
 import classes from "./GuidePanel.module.css";
+
+import {
+  semanticSearch,
+  type GuideScope,
+  type SemanticTitle,
+} from "../../../entities/title/api/semanticSearch";
+
+interface Turn {
+  id: number;
+  question: string;
+  scope: GuideScope;
+  items?: SemanticTitle[];
+  message?: string;
+  failed?: boolean;
+  previous?: string;
+}
+const scopeLabels = { all: "Всё", movie: "Фильмы", series: "Сериалы" };
 
 const marks = {
   header: "guide-sparkle",
@@ -56,26 +74,84 @@ export function GuideMark({
 }
 
 export function GuidePanel({
+  exclude,
   opened,
   onClose,
 }: {
+  exclude: string[];
   opened: boolean;
   onClose: () => void;
 }) {
-  const [showExample, setShowExample] = useState(true);
+  const [turns, setTurns] = useState<Turn[]>([]);
   const [input, setInput] = useState("");
-  const [followUp, setFollowUp] = useState("");
+  const [scope, setScope] = useState<GuideScope>("all");
+  const active = useRef<AbortController | null>(null);
+  const nextId = useRef(0);
+  const messages = useRef<HTMLDivElement>(null);
   const reducedMotion = useReducedMotion();
   const navigate = useNavigate();
+  const last = turns.at(-1);
+  const pending = Boolean(last && !last.failed && !last.items);
 
-  function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!input.trim()) return;
-    if (showExample) setFollowUp(input.trim());
-    setShowExample(true);
+  useEffect(() => () => active.current?.abort(), []);
+  useEffect(() => {
+    const panel = messages.current;
+    const question = panel?.querySelector<HTMLElement>('[data-current="true"]');
+    if (panel && question)
+      panel.scrollTop +=
+        question.getBoundingClientRect().top -
+        panel.getBoundingClientRect().top;
+  }, [turns, opened]);
+
+  function clear() {
+    active.current?.abort();
+    active.current = null;
+    setTurns([]);
     setInput("");
   }
 
+  async function search(turn: Turn, retry = false) {
+    if (active.current) return;
+    const controller = new AbortController();
+    active.current = controller;
+    setTurns((previous) =>
+      retry
+        ? previous.map((item) => (item.id === turn.id ? turn : item))
+        : [...previous.slice(-9), turn],
+    );
+    let result: Partial<Turn>;
+    try {
+      result = await semanticSearch(
+        turn.question,
+        turn.scope,
+        controller.signal,
+        exclude,
+        turn.previous,
+      );
+    } catch {
+      result = { failed: true };
+    }
+    if (active.current !== controller || controller.signal.aborted) return;
+    active.current = null;
+    setTurns((previous) =>
+      previous.map((item) =>
+        item.id === turn.id ? { ...item, ...result } : item,
+      ),
+    );
+  }
+
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const question = input.trim();
+    if (!question || active.current) return;
+    setInput("");
+    void search({
+      id: ++nextId.current,
+      question,
+      scope,
+      previous: last?.items?.length ? last.question : undefined,
+    });
+  }
   return (
     <Drawer
       opened={opened}
@@ -112,10 +188,7 @@ export function GuidePanel({
         variant="subtle"
         color="gray"
         aria-label="Очистить диалог"
-        onClick={() => {
-          setShowExample(false);
-          setFollowUp("");
-        }}
+        onClick={clear}
       >
         <IconTrash size={18} />
       </ActionIcon>
@@ -123,100 +196,127 @@ export function GuidePanel({
         <Text fz={13} c="dimmed">
           Помогу найти твоё кино
         </Text>
-        <Stack className={classes.messages} gap="md">
-          {showExample && (
-            <>
+        <Stack
+          className={classes.messages}
+          gap="md"
+          ref={messages}
+          aria-live="polite"
+        >
+          {!turns.length && (
+            <Text c="dimmed">
+              Какое кино хочется посмотреть? Опиши сюжет или настроение.
+            </Text>
+          )}
+          {turns.map((turn) => (
+            <Stack key={turn.id} data-current={turn.id === last?.id} gap="sm">
               <Paper className={classes.question} p="md">
-                Хочу что-то похожее на «Интерстеллар», но не такое длинное.
-              </Paper>
-              <Paper className={classes.answer} p="md">
-                <Stack>
-                  <Text>
-                    Попробуй «Прибытие». Это камерная фантастика о первом
-                    контакте, времени и человеческой связи. Длится 1 ч 56 мин —
-                    и его ещё нет в твоей истории.
+                <Text>{turn.question}</Text>
+                {turn.scope !== "all" && (
+                  <Text size="xs" c="dimmed">
+                    {scopeLabels[turn.scope]}
                   </Text>
-                  <Group className={classes.recommendation} align="stretch">
-                    <Image
-                      src="/figma/home-arrival.png"
-                      alt=""
-                      w={{ base: 60, sm: 90 }}
-                      h={{ base: 84, sm: 126 }}
-                      radius="lg"
-                    />
-                    <Stack
-                      className={classes.recommendationDetails}
-                      flex={1}
-                      justify="space-between"
-                      gap="xs"
-                    >
-                      <Title order={3} fz={21}>
-                        Прибытие
-                      </Title>
-                      <Text c="dimmed" fz={13}>
-                        2016 · 1 ч 56 мин · 16+
-                      </Text>
-                      <Text c="var(--kino-accent)" fz={13}>
-                        8.0 · 98% совпадение
-                      </Text>
-                      <ActionButton
-                        fullWidth
-                        px={{ base: "xs", sm: "md" }}
-                        rightSection={<IconArrowRight size={16} />}
-                        onClick={() => {
-                          onClose();
-                          navigate("/title/arrival");
-                        }}
-                      >
-                        Открыть фильм
-                      </ActionButton>
-                    </Stack>
-                  </Group>
-                </Stack>
+                )}
               </Paper>
               <Paper className={classes.answer} p="md">
-                Если хочется сменить жанр, попробуй «Отель „Гранд Будапешт“»: 1
-                ч 40 мин и совсем другое настроение.
-              </Paper>
-              <Group gap="xs">
-                {["Ещё короче", "Без грустного финала"].map((prompt) => (
-                  <Button
-                    key={prompt}
-                    variant="subtle"
-                    c="var(--kino-text)"
-                    onClick={() => setFollowUp(prompt)}
-                  >
-                    {prompt}
-                  </Button>
-                ))}
-              </Group>
-            </>
-          )}
-          {!showExample && (
-            <Button variant="default" onClick={() => setShowExample(true)}>
-              Показать пример диалога
-            </Button>
-          )}
-          <AnimatePresence>
-            {followUp && (
-              <motion.div
-                key={followUp}
-                initial={reducedMotion ? false : { opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.16 }}
-              >
                 <Stack>
-                  <Paper className={classes.question} p="md">
-                    {followUp}
-                  </Paper>
-                  <Paper className={classes.answer} p="md">
-                    Сейчас доступен демонстрационный диалог. Открой предложенный
-                    фильм, чтобы узнать о нём больше.
-                  </Paper>
+                  {turn.message && <Text>{turn.message}</Text>}
+                  {turn.failed ? (
+                    <>
+                      <Text>
+                        КиноГид не смог проверить ответ. Попробуй ещё раз.
+                      </Text>
+                      <Button
+                        variant="default"
+                        disabled={pending || turn.id !== last?.id}
+                        onClick={() =>
+                          void search(
+                            {
+                              id: turn.id,
+                              question: turn.question,
+                              scope: turn.scope,
+                              previous: turn.previous,
+                            },
+                            true,
+                          )
+                        }
+                      >
+                        Повторить
+                      </Button>
+                    </>
+                  ) : !turn.items ? (
+                    <Text>Проверяю запрос и подбираю ответ…</Text>
+                  ) : !turn.items.length ? (
+                    <Text>
+                      {turn.message
+                        ? ""
+                        : "Для этого запроса в выбранном разделе ничего не найдено."}
+                    </Text>
+                  ) : (
+                    turn.items.map((item) => (
+                      <Group
+                        key={item.id}
+                        className={classes.recommendation}
+                        align="flex-start"
+                      >
+                        {item.posterUrl && (
+                          <Image
+                            src={item.posterUrl}
+                            alt=""
+                            w={60}
+                            h={84}
+                            radius="md"
+                          />
+                        )}
+                        <Stack
+                          className={classes.recommendationDetails}
+                          flex={1}
+                          gap="xs"
+                        >
+                          <Title order={3} fz={20}>
+                            {item.title}
+                          </Title>
+                          <Text c="dimmed" size="sm">
+                            {[
+                              item.type === "movie" ? "Фильм" : "Сериал",
+                              item.releaseDate?.slice(0, 4),
+                            ]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </Text>
+                          {item.reason && <Text size="sm">{item.reason}</Text>}
+                          {item.overview && (
+                            <Text size="sm" lineClamp={3}>
+                              {item.overview}
+                            </Text>
+                          )}
+                          <ActionButton
+                            rightSection={<IconArrowRight size={16} />}
+                            onClick={() => {
+                              onClose();
+                              navigate("/title/" + item.id);
+                            }}
+                          >
+                            Открыть карточку
+                          </ActionButton>
+                        </Stack>
+                      </Group>
+                    ))
+                  )}
                 </Stack>
-              </motion.div>
-            )}
-          </AnimatePresence>
+              </Paper>
+              {turn.items && turn.id === last?.id && (
+                <Button
+                  variant="subtle"
+                  onClick={() => {
+                    setInput(turn.question);
+                    setScope(turn.scope);
+                  }}
+                >
+                  Уточнить запрос
+                </Button>
+              )}
+            </Stack>
+          ))}
         </Stack>
         <Stack
           renderRoot={(props) => (
@@ -224,7 +324,17 @@ export function GuidePanel({
           )}
           gap="xs"
         >
+          <SegmentedControl
+            aria-label="Где искать"
+            value={scope}
+            onChange={(v) => setScope(v as GuideScope)}
+            data={Object.entries(scopeLabels).map(([value, label]) => ({
+              value,
+              label,
+            }))}
+          />
           <TextInput
+            maxLength={1000}
             size="lg"
             placeholder="Спроси о кино…"
             aria-label="Сообщение КиноГиду"
@@ -234,6 +344,7 @@ export function GuidePanel({
             rightSection={
               <ActionIcon
                 type="submit"
+                disabled={pending || !input.trim()}
                 size={36}
                 aria-label="Отправить сообщение"
               >
@@ -243,7 +354,7 @@ export function GuidePanel({
             rightSectionWidth={52}
           />
           <Text fz={11} c="dimmed" ta="center">
-            AI может ошибаться. Проверяй информацию в карточке.
+            AI может ошибаться. Проверяй информацию в карточке
           </Text>
         </Stack>
       </Stack>
